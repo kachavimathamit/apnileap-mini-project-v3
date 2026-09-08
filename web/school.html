@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Schools — Mini-Project Portfolio Monitoring Portal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <main>
+      <nav class="breadcrumbs" id="breadcrumbs" aria-label="Breadcrumb"></nav>
+      <div class="page-head">
+        <h1 id="page-title"></h1>
+        <p id="page-sub"></p>
+      </div>
+
+      <div class="grid grid--cards" id="grid"></div>
+    </main>
+  </div>
+
+  <script src="data.js"></script>
+  <script>
+    const college = findCollege(qs('cid'));
+    if (!college) {
+      document.body.innerHTML = '<p style="padding:2rem">No such college.</p>';
+    } else {
+      renderTopbar('Schools');
+      renderBreadcrumbs(document.getElementById('breadcrumbs'), [
+        { label: 'Programme portfolio', href: 'portfolio.html' },
+        { label: college.name },
+      ]);
+
+      document.getElementById('page-title').textContent = college.name;
+      const schools = schoolsOf(college.cid);
+      document.getElementById('page-sub').textContent =
+        `${schools.length} school${schools.length === 1 ? '' : 's'} at this campus. Select one to see its departments.`;
+
+      document.getElementById('grid').innerHTML = schools.map((s) => cardLink(
+        `dept.html?sid=${s.sid}`, s.name, `${deptsOf(s.sid).length} department${deptsOf(s.sid).length === 1 ? '' : 's'}`,
+      )).join('') || '<p class="empty">No schools recorded yet for this college.</p>';
+    }
+  </script>
+</body>
+</html>

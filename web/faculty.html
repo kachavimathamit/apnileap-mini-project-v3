@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Faculty — Mini-Project Portfolio Monitoring Portal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <main>
+      <nav class="breadcrumbs" id="breadcrumbs" aria-label="Breadcrumb"></nav>
+      <div class="page-head">
+        <h1 id="page-title"></h1>
+        <p id="page-sub"></p>
+      </div>
+
+      <div class="grid grid--cards" id="grid"></div>
+    </main>
+  </div>
+
+  <script src="data.js"></script>
+  <script>
+    const dept = findDept(qs('did'));
+    if (!dept) {
+      document.body.innerHTML = '<p style="padding:2rem">No such department.</p>';
+    } else {
+      const school = findSchool(dept.sid);
+      const college = findCollege(school.cid);
+      renderTopbar('Faculty');
+      renderBreadcrumbs(document.getElementById('breadcrumbs'), [
+        { label: 'Programme portfolio', href: 'portfolio.html' },
+        { label: college.name, href: `school.html?cid=${college.cid}` },
+        { label: school.name, href: `dept.html?sid=${school.sid}` },
+        { label: dept.name },
+      ]);
+
+      document.getElementById('page-title').textContent = dept.name;
+      const faculty = facultyOf(dept.did);
+      document.getElementById('page-sub').textContent =
+        `${faculty.length} faculty member${faculty.length === 1 ? '' : 's'}. Select one to see their project theme.`;
+
+      document.getElementById('grid').innerHTML = faculty.map((f) => cardLink(
+        `theme.html?fid=${f.fid}`, f.name, `${themesOf(f.fid).length} theme${themesOf(f.fid).length === 1 ? '' : 's'}`,
+      )).join('') || '<p class="empty">No faculty recorded yet for this department.</p>';
+    }
+  </script>
+</body>
+</html>

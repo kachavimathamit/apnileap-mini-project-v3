@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Programme portfolio — Mini-Project Portfolio Monitoring Portal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <main>
+      <div class="page-head">
+        <h1>Programme portfolio</h1>
+        <p>All 6 authorized colleges. Select one to drill down to schools, departments and students.</p>
+      </div>
+
+      <div class="grid grid--cards" id="college-grid"></div>
+
+      <section class="card card--compact status-card" aria-label="Consolidated status">
+        <h2>Consolidated status</h2>
+        <div id="rag-legend-slot"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="data.js"></script>
+  <script>
+    renderTopbar('Programme portfolio');
+
+    // Project-level RAG status. No project has been added yet in this build
+    // (only the org hierarchy down to Student exists so far), so every
+    // count is honestly 0 rather than a made-up number.
+    function ragCountsFor(_scopeId) {
+      return [
+        { label: 'Green', className: 'rag-dot--green', count: 0 },
+        { label: 'Yellow', className: 'rag-dot--yellow', count: 0 },
+        { label: 'Red', className: 'rag-dot--red', count: 0 },
+      ];
+    }
+
+    function renderRagLegend(counts, extraClass) {
+      return `<div class="rag-legend ${extraClass}">${counts.map((r) => `
+        <div class="rag-item">
+          <span class="rag-dot ${r.className}" aria-hidden="true"></span>
+          <span class="rag-item__count">${r.count}</span>
+          <span class="rag-item__label">${r.label}</span>
+        </div>
+      `).join('')}</div>`;
+    }
+
+    const grid = document.getElementById('college-grid');
+    grid.innerHTML = DATA.colleges.map((c) => `
+      <a class="card college-card link-card" href="school.html?cid=${c.cid}">
+        <h2>${c.name}</h2>
+        <div class="campus">${c.campus} Campus</div>
+        ${renderRagLegend(ragCountsFor(c.cid), 'rag-legend--mini')}
+      </a>
+    `).join('');
+
+    document.getElementById('rag-legend-slot').innerHTML = renderRagLegend(ragCountsFor(null), 'rag-legend--center');
+  </script>
+</body>
+</html>

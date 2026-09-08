@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Departments — Mini-Project Portfolio Monitoring Portal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <main>
+      <nav class="breadcrumbs" id="breadcrumbs" aria-label="Breadcrumb"></nav>
+      <div class="page-head">
+        <h1 id="page-title"></h1>
+        <p id="page-sub"></p>
+      </div>
+
+      <div class="grid grid--cards" id="grid"></div>
+    </main>
+  </div>
+
+  <script src="data.js"></script>
+  <script>
+    const school = findSchool(qs('sid'));
+    if (!school) {
+      document.body.innerHTML = '<p style="padding:2rem">No such school.</p>';
+    } else {
+      const college = findCollege(school.cid);
+      renderTopbar('Departments');
+      renderBreadcrumbs(document.getElementById('breadcrumbs'), [
+        { label: 'Programme portfolio', href: 'portfolio.html' },
+        { label: college.name, href: `school.html?cid=${college.cid}` },
+        { label: school.name },
+      ]);
+
+      document.getElementById('page-title').textContent = school.name;
+      const depts = deptsOf(school.sid);
+      document.getElementById('page-sub').textContent =
+        `${depts.length} department${depts.length === 1 ? '' : 's'}. Select one to see its faculty.`;
+
+      document.getElementById('grid').innerHTML = depts.map((d) => cardLink(
+        `faculty.html?did=${d.did}`, d.name, `${facultyOf(d.did).length} faculty member${facultyOf(d.did).length === 1 ? '' : 's'}`,
+      )).join('') || '<p class="empty">No departments recorded yet for this school.</p>';
+    }
+  </script>
+</body>
+</html>

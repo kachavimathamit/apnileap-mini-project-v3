@@ -1,0 +1,26 @@
+# Leftover files from an earlier v2 fork that this repo does not use.
+# v3 is a UI-only static build (web/*.html, web/data.js, web/styles.css)
+# plus the schema/seed SQL under server/db/ — nothing else is part of it.
+node_modules/
+package.json
+package-lock.json
+progress.md
+DATABASE-SCHEMA.txt
+HOW-TO-RUN.txt
+SAMPLE-TEST-DATA.txt
+*.docx
+docs/
+server/.env
+server/.env.example
+server/data/
+server/package.json
+server/package-lock.json
+server/scripts/
+server/src/
+server/test/
+web/package.json
+web/package-lock.json
+web/tsconfig.json
+web/tsconfig.tsbuildinfo
+web/vite.config.ts
+web/src/

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student — Mini-Project Portfolio Monitoring Portal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <main>
+      <nav class="breadcrumbs" id="breadcrumbs" aria-label="Breadcrumb"></nav>
+      <div class="page-head">
+        <h1 id="page-title"></h1>
+        <p id="page-sub"></p>
+      </div>
+
+      <div class="grid grid--cards" id="grid"></div>
+    </main>
+  </div>
+
+  <script src="data.js"></script>
+  <script>
+    const artifact = findArtifact(qs('aid'));
+    if (!artifact) {
+      document.body.innerHTML = '<p style="padding:2rem">No such artefact.</p>';
+    } else {
+      const theme = findTheme(artifact.tid);
+      const fac = findFaculty(theme.fid);
+      const dept = findDept(theme.did);
+      const school = findSchool(dept.sid);
+      const college = findCollege(school.cid);
+      renderTopbar('Student');
+      renderBreadcrumbs(document.getElementById('breadcrumbs'), [
+        { label: 'Programme portfolio', href: 'portfolio.html' },
+        { label: college.name, href: `school.html?cid=${college.cid}` },
+        { label: school.name, href: `dept.html?sid=${school.sid}` },
+        { label: dept.name, href: `faculty.html?did=${dept.did}` },
+        { label: fac.name, href: `theme.html?fid=${fac.fid}` },
+        { label: theme.name, href: `artifact.html?tid=${theme.tid}` },
+        { label: artifact.name },
+      ]);
+
+      document.getElementById('page-title').textContent = artifact.name;
+      const students = studentsOf(artifact.aid);
+      document.getElementById('page-sub').textContent =
+        `${students.length} student${students.length === 1 ? '' : 's'} working on this artefact — end of the trail.`;
+
+      // Leaf level — a plain card, not a link, since there is nothing below a student.
+      document.getElementById('grid').innerHTML = students.map((s) => `
+        <section class="card college-card">
+          <h2>${s.name}</h2>
+          <div class="campus">Department: ${findDept(s.did).name}</div>
+        </section>
+      `).join('') || '<p class="empty">No student recorded yet for this artefact.</p>';
+    }
+  </script>
+</body>
+</html>

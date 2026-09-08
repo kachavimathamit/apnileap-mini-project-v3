@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in — Mini-Project Portfolio Monitoring Portal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-card">
+      <h1>Sign in</h1>
+      <p class="sub">Mini-Project Portfolio Monitoring Portal</p>
+
+      <div class="alert alert--error" id="error-box" role="alert" hidden>
+        <span id="error-text"></span>
+      </div>
+
+      <form id="login-form" novalidate>
+        <div class="field">
+          <label for="email">Email address</label>
+          <input id="email" name="email" type="email" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required />
+        </div>
+        <button type="submit" class="btn--primary" id="submit-btn">Sign in</button>
+      </form>
+
+      <div class="auth-foot">
+        <a href="#">Forgotten your password?</a>
+      </div>
+
+      <div class="demo-accounts">
+        <p>
+          Not registered yet? <a href="#">Sign up here</a>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // UI only — there is no real backend/session yet, so this is a single
+    // hardcoded credential check done entirely in the browser, not real
+    // authentication. It exists only so the demo behaves correctly: the
+    // one known account gets in, anything else is rejected.
+    //
+    //   ApniLeap Head — Balaji
+    //   balaji@apnileap.example / Balaji@2026!
+    const VALID_EMAIL = 'balaji@apnileap.example';
+    const VALID_PASSWORD = 'Balaji@2026!';
+
+    const form = document.getElementById('login-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const errorBox = document.getElementById('error-box');
+    const errorText = document.getElementById('error-text');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      errorBox.hidden = true;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing in…';
+
+      setTimeout(() => {
+        const matches = emailInput.value.trim().toLowerCase() === VALID_EMAIL
+          && passwordInput.value === VALID_PASSWORD;
+
+        if (matches) {
+          window.location.href = 'portfolio.html';
+          return;
+        }
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign in';
+        errorText.textContent = 'Email address or password is incorrect.';
+        errorBox.hidden = false;
+      }, 500);
+    });
+  </script>
+</body>
+</html>
