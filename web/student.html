@@ -21,8 +21,11 @@
 
   <script src="data.js"></script>
   <script>
-    const artifact = findArtifact(qs('aid'));
-    if (!artifact) {
+    const session = requireSession();
+    const artifact = session && findArtifact(qs('aid'));
+    if (!session) {
+      // requireSession already redirected to the login page.
+    } else if (!artifact) {
       document.body.innerHTML = '<p style="padding:2rem">No such artefact.</p>';
     } else {
       const theme = findTheme(artifact.tid);
@@ -30,29 +33,51 @@
       const dept = findDept(theme.did);
       const school = findSchool(dept.sid);
       const college = findCollege(school.cid);
-      renderTopbar('Student');
-      renderBreadcrumbs(document.getElementById('breadcrumbs'), [
-        { label: 'Programme portfolio', href: 'portfolio.html' },
-        { label: college.name, href: `school.html?cid=${college.cid}` },
-        { label: school.name, href: `dept.html?sid=${school.sid}` },
-        { label: dept.name, href: `faculty.html?did=${dept.did}` },
-        { label: fac.name, href: `theme.html?fid=${fac.fid}` },
-        { label: theme.name, href: `artifact.html?tid=${theme.tid}` },
-        { label: artifact.name },
-      ]);
+      if (!authorize(session.scope, { cid: college.cid, did: dept.did, fid: fac.fid })) {
+        renderTopbar('Student', session);
+        denyAccess(session);
+      } else {
+        renderTopbar('Student', session);
+        let trail;
+        if (session.scope.level === 'faculty') {
+          trail = [
+            { label: fac.name, href: `theme.html?fid=${fac.fid}` },
+            { label: theme.name, href: `artifact.html?tid=${theme.tid}` },
+            { label: artifact.name },
+          ];
+        } else if (session.scope.level === 'dept') {
+          trail = [
+            { label: dept.name, href: `faculty.html?did=${dept.did}` },
+            { label: fac.name, href: `theme.html?fid=${fac.fid}` },
+            { label: theme.name, href: `artifact.html?tid=${theme.tid}` },
+            { label: artifact.name },
+          ];
+        } else {
+          trail = [
+            { label: 'Programme portfolio', href: 'portfolio.html' },
+            { label: college.name, href: `school.html?cid=${college.cid}` },
+            { label: school.name, href: `dept.html?sid=${school.sid}` },
+            { label: dept.name, href: `faculty.html?did=${dept.did}` },
+            { label: fac.name, href: `theme.html?fid=${fac.fid}` },
+            { label: theme.name, href: `artifact.html?tid=${theme.tid}` },
+            { label: artifact.name },
+          ];
+        }
+        renderBreadcrumbs(document.getElementById('breadcrumbs'), trail);
 
-      document.getElementById('page-title').textContent = artifact.name;
-      const students = studentsOf(artifact.aid);
-      document.getElementById('page-sub').textContent =
-        `${students.length} student${students.length === 1 ? '' : 's'} working on this artefact — end of the trail.`;
+        document.getElementById('page-title').textContent = artifact.name;
+        const students = studentsOf(artifact.aid);
+        document.getElementById('page-sub').textContent =
+          `${students.length} student${students.length === 1 ? '' : 's'} working on this artefact — end of the trail.`;
 
-      // Leaf level — a plain card, not a link, since there is nothing below a student.
-      document.getElementById('grid').innerHTML = students.map((s) => `
-        <section class="card college-card">
-          <h2>${s.name}</h2>
-          <div class="campus">Department: ${findDept(s.did).name}</div>
-        </section>
-      `).join('') || '<p class="empty">No student recorded yet for this artefact.</p>';
+        // Leaf level — a plain card, not a link, since there is nothing below a student.
+        document.getElementById('grid').innerHTML = students.map((s) => `
+          <section class="card college-card">
+            <h2>${s.name}</h2>
+            <div class="campus">Department: ${findDept(s.did).name}</div>
+          </section>
+        `).join('') || '<p class="empty">No student recorded yet for this artefact.</p>';
+      }
     }
   </script>
 </body>

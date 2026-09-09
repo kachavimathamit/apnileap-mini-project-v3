@@ -21,28 +21,42 @@
 
   <script src="data.js"></script>
   <script>
-    const dept = findDept(qs('did'));
-    if (!dept) {
+    const session = requireSession();
+    const dept = session && findDept(qs('did'));
+    if (!session) {
+      // requireSession already redirected to the login page.
+    } else if (!dept) {
       document.body.innerHTML = '<p style="padding:2rem">No such department.</p>';
+    } else if (session.scope.level === 'faculty') {
+      // A faculty mentor sees only their own theme, never a dept's full faculty roster.
+      window.location.replace(homeUrlFor(session.scope));
     } else {
       const school = findSchool(dept.sid);
       const college = findCollege(school.cid);
-      renderTopbar('Faculty');
-      renderBreadcrumbs(document.getElementById('breadcrumbs'), [
-        { label: 'Programme portfolio', href: 'portfolio.html' },
-        { label: college.name, href: `school.html?cid=${college.cid}` },
-        { label: school.name, href: `dept.html?sid=${school.sid}` },
-        { label: dept.name },
-      ]);
+      if (!authorize(session.scope, { cid: college.cid, did: dept.did })) {
+        renderTopbar('Faculty', session);
+        denyAccess(session);
+      } else {
+        renderTopbar('Faculty', session);
+        const trail = isBranchScoped(session.scope)
+          ? [{ label: dept.name }]
+          : [
+              { label: 'Programme portfolio', href: 'portfolio.html' },
+              { label: college.name, href: `school.html?cid=${college.cid}` },
+              { label: school.name, href: `dept.html?sid=${school.sid}` },
+              { label: dept.name },
+            ];
+        renderBreadcrumbs(document.getElementById('breadcrumbs'), trail);
 
-      document.getElementById('page-title').textContent = dept.name;
-      const faculty = facultyOf(dept.did);
-      document.getElementById('page-sub').textContent =
-        `${faculty.length} faculty member${faculty.length === 1 ? '' : 's'}. Select one to see their project theme.`;
+        document.getElementById('page-title').textContent = dept.name;
+        const faculty = facultyOf(dept.did);
+        document.getElementById('page-sub').textContent =
+          `${faculty.length} faculty member${faculty.length === 1 ? '' : 's'}. Select one to see their project theme.`;
 
-      document.getElementById('grid').innerHTML = faculty.map((f) => cardLink(
-        `theme.html?fid=${f.fid}`, f.name, `${themesOf(f.fid).length} theme${themesOf(f.fid).length === 1 ? '' : 's'}`,
-      )).join('') || '<p class="empty">No faculty recorded yet for this department.</p>';
+        document.getElementById('grid').innerHTML = faculty.map((f) => cardLink(
+          `theme.html?fid=${f.fid}`, f.name, `${themesOf(f.fid).length} theme${themesOf(f.fid).length === 1 ? '' : 's'}`,
+        )).join('') || '<p class="empty">No faculty recorded yet for this department.</p>';
+      }
     }
   </script>
 </body>

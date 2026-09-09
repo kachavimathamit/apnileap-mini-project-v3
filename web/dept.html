@@ -21,26 +21,36 @@
 
   <script src="data.js"></script>
   <script>
-    const school = findSchool(qs('sid'));
-    if (!school) {
+    const session = requireSession();
+    const school = session && findSchool(qs('sid'));
+    if (!session) {
+      // requireSession already redirected to the login page.
+    } else if (!school) {
       document.body.innerHTML = '<p style="padding:2rem">No such school.</p>';
+    } else if (isBranchScoped(session.scope)) {
+      window.location.replace(homeUrlFor(session.scope));
     } else {
       const college = findCollege(school.cid);
-      renderTopbar('Departments');
-      renderBreadcrumbs(document.getElementById('breadcrumbs'), [
-        { label: 'Programme portfolio', href: 'portfolio.html' },
-        { label: college.name, href: `school.html?cid=${college.cid}` },
-        { label: school.name },
-      ]);
+      if (!authorize(session.scope, { cid: college.cid })) {
+        renderTopbar('Departments', session);
+        denyAccess(session);
+      } else {
+        renderTopbar('Departments', session);
+        renderBreadcrumbs(document.getElementById('breadcrumbs'), [
+          { label: 'Programme portfolio', href: 'portfolio.html' },
+          { label: college.name, href: `school.html?cid=${college.cid}` },
+          { label: school.name },
+        ]);
 
-      document.getElementById('page-title').textContent = school.name;
-      const depts = deptsOf(school.sid);
-      document.getElementById('page-sub').textContent =
-        `${depts.length} department${depts.length === 1 ? '' : 's'}. Select one to see its faculty.`;
+        document.getElementById('page-title').textContent = school.name;
+        const depts = deptsOf(school.sid);
+        document.getElementById('page-sub').textContent =
+          `${depts.length} department${depts.length === 1 ? '' : 's'}. Select one to see its faculty.`;
 
-      document.getElementById('grid').innerHTML = depts.map((d) => cardLink(
-        `faculty.html?did=${d.did}`, d.name, `${facultyOf(d.did).length} faculty member${facultyOf(d.did).length === 1 ? '' : 's'}`,
-      )).join('') || '<p class="empty">No departments recorded yet for this school.</p>';
+        document.getElementById('grid').innerHTML = depts.map((d) => cardLink(
+          `faculty.html?did=${d.did}`, d.name, `${facultyOf(d.did).length} faculty member${facultyOf(d.did).length === 1 ? '' : 's'}`,
+        )).join('') || '<p class="empty">No departments recorded yet for this school.</p>';
+      }
     }
   </script>
 </body>

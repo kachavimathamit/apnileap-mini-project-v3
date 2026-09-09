@@ -198,6 +198,10 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 }
 .demo-accounts p { margin: 0 0 0.5rem; }
 .demo-accounts p:last-child { margin: 0; }
+.demo-accounts summary { cursor: pointer; color: var(--brand); font-weight: 600; }
+.demo-roles { width: 100%; margin-top: var(--sp-2); border-collapse: collapse; }
+.demo-roles th, .demo-roles td { text-align: left; padding: 3px 6px 3px 0; border-bottom: 1px solid var(--line); }
+.demo-roles code { background: var(--surface-alt); padding: 1px 4px; border-radius: 3px; }
 
 @media (max-width: 30rem) {
   .auth-card { padding: var(--sp-4); }

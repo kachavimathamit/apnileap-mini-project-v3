@@ -21,32 +21,55 @@
 
   <script src="data.js"></script>
   <script>
-    const theme = findTheme(qs('tid'));
-    if (!theme) {
+    const session = requireSession();
+    const theme = session && findTheme(qs('tid'));
+    if (!session) {
+      // requireSession already redirected to the login page.
+    } else if (!theme) {
       document.body.innerHTML = '<p style="padding:2rem">No such theme.</p>';
     } else {
       const fac = findFaculty(theme.fid);
       const dept = findDept(theme.did);
       const school = findSchool(dept.sid);
       const college = findCollege(school.cid);
-      renderTopbar('Artefacts');
-      renderBreadcrumbs(document.getElementById('breadcrumbs'), [
-        { label: 'Programme portfolio', href: 'portfolio.html' },
-        { label: college.name, href: `school.html?cid=${college.cid}` },
-        { label: school.name, href: `dept.html?sid=${school.sid}` },
-        { label: dept.name, href: `faculty.html?did=${dept.did}` },
-        { label: fac.name, href: `theme.html?fid=${fac.fid}` },
-        { label: theme.name },
-      ]);
+      if (!authorize(session.scope, { cid: college.cid, did: dept.did, fid: fac.fid })) {
+        renderTopbar('Artefacts', session);
+        denyAccess(session);
+      } else {
+        renderTopbar('Artefacts', session);
+        let trail;
+        if (session.scope.level === 'faculty') {
+          trail = [
+            { label: fac.name, href: `theme.html?fid=${fac.fid}` },
+            { label: theme.name },
+          ];
+        } else if (session.scope.level === 'dept') {
+          trail = [
+            { label: dept.name, href: `faculty.html?did=${dept.did}` },
+            { label: fac.name, href: `theme.html?fid=${fac.fid}` },
+            { label: theme.name },
+          ];
+        } else {
+          trail = [
+            { label: 'Programme portfolio', href: 'portfolio.html' },
+            { label: college.name, href: `school.html?cid=${college.cid}` },
+            { label: school.name, href: `dept.html?sid=${school.sid}` },
+            { label: dept.name, href: `faculty.html?did=${dept.did}` },
+            { label: fac.name, href: `theme.html?fid=${fac.fid}` },
+            { label: theme.name },
+          ];
+        }
+        renderBreadcrumbs(document.getElementById('breadcrumbs'), trail);
 
-      document.getElementById('page-title').textContent = theme.name;
-      const artifacts = artifactsOf(theme.tid);
-      document.getElementById('page-sub').textContent =
-        `${artifacts.length} artefact${artifacts.length === 1 ? '' : 's'}. Select one to see the student working on it.`;
+        document.getElementById('page-title').textContent = theme.name;
+        const artifacts = artifactsOf(theme.tid);
+        document.getElementById('page-sub').textContent =
+          `${artifacts.length} artefact${artifacts.length === 1 ? '' : 's'}. Select one to see the student working on it.`;
 
-      document.getElementById('grid').innerHTML = artifacts.map((a) => cardLink(
-        `student.html?aid=${a.aid}`, a.name, `${studentsOf(a.aid).length} student${studentsOf(a.aid).length === 1 ? '' : 's'}`,
-      )).join('') || '<p class="empty">No artefact recorded yet for this theme.</p>';
+        document.getElementById('grid').innerHTML = artifacts.map((a) => cardLink(
+          `student.html?aid=${a.aid}`, a.name, `${studentsOf(a.aid).length} student${studentsOf(a.aid).length === 1 ? '' : 's'}`,
+        )).join('') || '<p class="empty">No artefact recorded yet for this theme.</p>';
+      }
     }
   </script>
 </body>

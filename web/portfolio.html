@@ -11,7 +11,7 @@
     <main>
       <div class="page-head">
         <h1>Programme portfolio</h1>
-        <p>All 6 authorized colleges. Select one to drill down to schools, departments and students.</p>
+        <p id="page-sub"></p>
       </div>
 
       <div class="grid grid--cards" id="college-grid"></div>
@@ -25,8 +25,19 @@
 
   <script src="data.js"></script>
   <script>
-    renderTopbar('Programme portfolio');
+    const session = requireSession();
+    if (session) {
+      // Department- and faculty-scoped roles have no portfolio to browse -
+      // they're confined to one fixed branch of the hierarchy.
+      if (isBranchScoped(session.scope)) {
+        window.location.replace(homeUrlFor(session.scope));
+      } else {
+        renderTopbar('Programme portfolio', session);
+        run(session);
+      }
+    }
 
+    function run(session) {
     // Project-level RAG status. No project has been added yet in this build
     // (only the org hierarchy down to Student exists so far), so every
     // count is honestly 0 rather than a made-up number.
@@ -48,8 +59,12 @@
       `).join('')}</div>`;
     }
 
+    const colleges = collegesInScope(session.scope);
+    document.getElementById('page-sub').textContent =
+      `${colleges.length} authorized college${colleges.length === 1 ? '' : 's'}. Select one to drill down to schools, departments and students.`;
+
     const grid = document.getElementById('college-grid');
-    grid.innerHTML = DATA.colleges.map((c) => `
+    grid.innerHTML = colleges.map((c) => `
       <a class="card college-card link-card" href="school.html?cid=${c.cid}">
         <h2>${c.name}</h2>
         <div class="campus">${c.campus} Campus</div>
@@ -58,6 +73,7 @@
     `).join('');
 
     document.getElementById('rag-legend-slot').innerHTML = renderRagLegend(ragCountsFor(null), 'rag-legend--center');
+    }
   </script>
 </body>
 </html>

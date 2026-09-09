@@ -21,30 +21,49 @@
 
   <script src="data.js"></script>
   <script>
-    const fac = findFaculty(qs('fid'));
-    if (!fac) {
+    const session = requireSession();
+    const fac = session && findFaculty(qs('fid'));
+    if (!session) {
+      // requireSession already redirected to the login page.
+    } else if (!fac) {
       document.body.innerHTML = '<p style="padding:2rem">No such faculty member.</p>';
     } else {
       const dept = findDept(fac.did);
       const school = findSchool(dept.sid);
       const college = findCollege(school.cid);
-      renderTopbar('Themes');
-      renderBreadcrumbs(document.getElementById('breadcrumbs'), [
-        { label: 'Programme portfolio', href: 'portfolio.html' },
-        { label: college.name, href: `school.html?cid=${college.cid}` },
-        { label: school.name, href: `dept.html?sid=${school.sid}` },
-        { label: dept.name, href: `faculty.html?did=${dept.did}` },
-        { label: fac.name },
-      ]);
+      if (!authorize(session.scope, { cid: college.cid, did: dept.did, fid: fac.fid })) {
+        renderTopbar('Themes', session);
+        denyAccess(session);
+      } else {
+        renderTopbar('Themes', session);
+        let trail;
+        if (session.scope.level === 'faculty') {
+          trail = [{ label: fac.name }];
+        } else if (session.scope.level === 'dept') {
+          trail = [
+            { label: dept.name, href: `faculty.html?did=${dept.did}` },
+            { label: fac.name },
+          ];
+        } else {
+          trail = [
+            { label: 'Programme portfolio', href: 'portfolio.html' },
+            { label: college.name, href: `school.html?cid=${college.cid}` },
+            { label: school.name, href: `dept.html?sid=${school.sid}` },
+            { label: dept.name, href: `faculty.html?did=${dept.did}` },
+            { label: fac.name },
+          ];
+        }
+        renderBreadcrumbs(document.getElementById('breadcrumbs'), trail);
 
-      document.getElementById('page-title').textContent = fac.name;
-      const themes = themesOf(fac.fid);
-      document.getElementById('page-sub').textContent =
-        `${themes.length} project theme${themes.length === 1 ? '' : 's'}. Select one to see its artifact.`;
+        document.getElementById('page-title').textContent = fac.name;
+        const themes = themesOf(fac.fid);
+        document.getElementById('page-sub').textContent =
+          `${themes.length} project theme${themes.length === 1 ? '' : 's'}. Select one to see its artifact.`;
 
-      document.getElementById('grid').innerHTML = themes.map((t) => cardLink(
-        `artifact.html?tid=${t.tid}`, t.name, `${artifactsOf(t.tid).length} artefact${artifactsOf(t.tid).length === 1 ? '' : 's'}`,
-      )).join('') || '<p class="empty">No theme recorded yet for this faculty member.</p>';
+        document.getElementById('grid').innerHTML = themes.map((t) => cardLink(
+          `artifact.html?tid=${t.tid}`, t.name, `${artifactsOf(t.tid).length} artefact${artifactsOf(t.tid).length === 1 ? '' : 's'}`,
+        )).join('') || '<p class="empty">No theme recorded yet for this faculty member.</p>';
+      }
     }
   </script>
 </body>

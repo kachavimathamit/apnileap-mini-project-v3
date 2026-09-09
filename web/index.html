@@ -36,20 +36,26 @@
         <p>
           Not registered yet? <a href="#">Sign up here</a>
         </p>
+        <details>
+          <summary>Demo accounts</summary>
+          <table class="demo-roles">
+            <thead><tr><th>Role</th><th>Email</th><th>Password</th></tr></thead>
+            <tbody id="demo-roles-body"></tbody>
+          </table>
+        </details>
       </div>
     </div>
   </div>
 
+  <script src="data.js"></script>
   <script>
-    // UI only — there is no real backend/session yet, so this is a single
-    // hardcoded credential check done entirely in the browser, not real
-    // authentication. It exists only so the demo behaves correctly: the
-    // one known account gets in, anything else is rejected.
-    //
-    //   ApniLeap Head — Balaji
-    //   balaji@apnileap.example / Balaji@2026!
-    const VALID_EMAIL = 'balaji@apnileap.example';
-    const VALID_PASSWORD = 'Balaji@2026!';
+    // UI only — there is no real backend/session yet, so this is a
+    // client-side credential check against the ROLES table in data.js, not
+    // real authentication. Each role carries a scope (see data.js) that
+    // every other page uses to decide what that signed-in role may see.
+    document.getElementById('demo-roles-body').innerHTML = ROLES.map((r) => `
+      <tr><td>${r.role}</td><td><code>${r.email}</code></td><td><code>${r.password}</code></td></tr>
+    `).join('');
 
     const form = document.getElementById('login-form');
     const submitBtn = document.getElementById('submit-btn');
@@ -65,11 +71,11 @@
       submitBtn.textContent = 'Signing in…';
 
       setTimeout(() => {
-        const matches = emailInput.value.trim().toLowerCase() === VALID_EMAIL
-          && passwordInput.value === VALID_PASSWORD;
+        const role = findRoleByCredentials(emailInput.value, passwordInput.value);
 
-        if (matches) {
-          window.location.href = 'portfolio.html';
+        if (role) {
+          sessionStorage.setItem('apnileap_session', JSON.stringify({ role: role.role, email: role.email, scope: role.scope }));
+          window.location.href = homeUrlFor(role.scope);
           return;
         }
 

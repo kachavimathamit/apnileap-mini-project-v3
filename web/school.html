@@ -21,11 +21,19 @@
 
   <script src="data.js"></script>
   <script>
-    const college = findCollege(qs('cid'));
-    if (!college) {
+    const session = requireSession();
+    const college = session && findCollege(qs('cid'));
+    if (!session) {
+      // requireSession already redirected to the login page.
+    } else if (!college) {
       document.body.innerHTML = '<p style="padding:2rem">No such college.</p>';
+    } else if (isBranchScoped(session.scope)) {
+      window.location.replace(homeUrlFor(session.scope));
+    } else if (!authorize(session.scope, { cid: college.cid })) {
+      renderTopbar('Schools', session);
+      denyAccess(session);
     } else {
-      renderTopbar('Schools');
+      renderTopbar('Schools', session);
       renderBreadcrumbs(document.getElementById('breadcrumbs'), [
         { label: 'Programme portfolio', href: 'portfolio.html' },
         { label: college.name },
