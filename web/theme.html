@@ -61,7 +61,8 @@
           `${themes.length} project theme${themes.length === 1 ? '' : 's'}. Select one to see its artifact.`;
 
         document.getElementById('grid').innerHTML = themes.map((t) => cardLink(
-          `artifact.html?tid=${t.tid}`, t.name, `${artifactsOf(t.tid).length} artefact${artifactsOf(t.tid).length === 1 ? '' : 's'}`,
+          `artifact.html?tid=${t.tid}`, t.name,
+          `AY ${t.academicYear} · ${artifactsOf(t.tid).length} artefact${artifactsOf(t.tid).length === 1 ? '' : 's'}`,
         )).join('') || '<p class="empty">No theme recorded yet for this faculty member.</p>';
       }
     }

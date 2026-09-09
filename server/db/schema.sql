@@ -52,12 +52,15 @@ CREATE TABLE Faculty (
 
 -- ------------------------------------------------------------
 -- Theme — a faculty member's project theme, within a department.
+-- Academic_year ties a theme to its cohort (e.g. '2026-27') - themes reset
+-- every year, so this is what tells two years' worth of themes apart.
 -- ------------------------------------------------------------
 CREATE TABLE Theme (
-  T_id    SERIAL PRIMARY KEY,
-  Tname   VARCHAR(200) NOT NULL,
-  D_id    INTEGER NOT NULL REFERENCES Dept(Did),
-  F_id    INTEGER NOT NULL REFERENCES Faculty(Fid)
+  T_id            SERIAL PRIMARY KEY,
+  Tname           VARCHAR(200) NOT NULL,
+  Academic_year   VARCHAR(10) NOT NULL,
+  D_id            INTEGER NOT NULL REFERENCES Dept(Did),
+  F_id            INTEGER NOT NULL REFERENCES Faculty(Fid)
 );
 
 -- ------------------------------------------------------------

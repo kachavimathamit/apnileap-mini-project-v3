@@ -1,0 +1,89 @@
+============================================================
+ApniLeap Mini Project v3 -- Database Schema
+Engine: PostgreSQL
+Hierarchy: College > School > Dept > Faculty > Theme > Artifact > Student
+============================================================
+
+TABLE: College
+------------------------------------------------------------
+  Cid           SERIAL PRIMARY KEY
+  College_name  VARCHAR(200) NOT NULL
+  Campus        VARCHAR(100)
+
+TABLE: School
+------------------------------------------------------------
+  Sid           SERIAL PRIMARY KEY
+  Sname         VARCHAR(200) NOT NULL
+  School_code   VARCHAR(20)
+  Dean_name     VARCHAR(200)              -- a school is headed by its Dean
+  Dean_contact  VARCHAR(200)
+  Cid           INTEGER NOT NULL -> References College(Cid)
+
+TABLE: Dept
+------------------------------------------------------------
+  Did          SERIAL PRIMARY KEY
+  Dname        VARCHAR(200) NOT NULL
+  Dept_code    VARCHAR(20)
+  HOD_name     VARCHAR(200)               -- a dept is headed by its HOD (distinct from the school's Dean)
+  HOD_contact  VARCHAR(200)
+  Sid          INTEGER NOT NULL -> References School(Sid)
+
+TABLE: Faculty
+------------------------------------------------------------
+  Fid    SERIAL PRIMARY KEY
+  Fname  VARCHAR(200) NOT NULL
+  Did    INTEGER NOT NULL -> References Dept(Did)
+
+TABLE: Theme
+------------------------------------------------------------
+  T_id           SERIAL PRIMARY KEY
+  Tname          VARCHAR(200) NOT NULL
+  Academic_year  VARCHAR(10) NOT NULL     -- e.g. '2026-27'; ties a theme to its cohort
+  D_id           INTEGER NOT NULL -> References Dept(Did)
+  F_id           INTEGER NOT NULL -> References Faculty(Fid)
+
+TABLE: Artifact
+------------------------------------------------------------
+  A_id    SERIAL PRIMARY KEY
+  A_name  VARCHAR(200) NOT NULL
+  T_id    INTEGER NOT NULL -> References Theme(T_id)
+
+TABLE: Student
+------------------------------------------------------------
+  S_id      SERIAL PRIMARY KEY
+  S_name    VARCHAR(200) NOT NULL
+  SRN       VARCHAR(20) NOT NULL UNIQUE   -- registrar-issued identifier
+  Roll_no   VARCHAR(10) NOT NULL
+  Division  VARCHAR(5) NOT NULL
+  Semester  INTEGER NOT NULL
+  A_id      INTEGER NOT NULL -> References Artifact(A_id)
+  D_id      INTEGER NOT NULL -> References Dept(Did)
+
+------------------------------------------------------------
+CONSTRAINT: Fixed team size
+------------------------------------------------------------
+Every Artifact's team (its Student rows) is fixed at exactly 4 members -
+never more, never fewer once set. Enforced by the trigger
+"trg_enforce_team_size" (function enforce_team_size()):
+  - Blocks inserting a 5th student onto an Artifact.
+  - Blocks deleting any student once a team is assigned.
+
+------------------------------------------------------------
+Relationship chain (parent -> child)
+------------------------------------------------------------
+College (Cid)
+  -> School (Cid)
+    -> Dept (Sid)
+      -> Faculty (Did)
+        -> Theme (D_id, F_id)
+          -> Artifact (T_id)
+            -> Student (A_id, D_id)
+
+------------------------------------------------------------
+Not yet built
+------------------------------------------------------------
+- Result table (Gate_0 / Gate_1 marks) -- from the original hand-drawn
+  design, still pending explicit instruction to add.
+- Artifact.status / Artifact.progress (RAG + % complete) currently exist
+  only in the UI layer (web/data.js), not as real columns in this SQL
+  schema yet.
