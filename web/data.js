@@ -57,12 +57,34 @@ const DATA = {
     { aid: 5, name: 'Peer Notes Sharing Network', tid: 5, status: 'red', progress: 0 },
   ],
 
+  // Team size is a fixed rule, not a sample-data accident: every artifact
+  // has exactly 4 students, never more or fewer (see TEAM_SIZE below and
+  // the enforce_team_size trigger in server/db/schema.sql).
   students: [
     { sid: 1, name: 'Rohan Kulkarni', aid: 1, did: 1 },
-    { sid: 2, name: 'Sneha Patil', aid: 2, did: 2 },
-    { sid: 3, name: 'Aditya Desai', aid: 3, did: 3 },
-    { sid: 4, name: 'Priya Joshi', aid: 4, did: 4 },
-    { sid: 5, name: 'Karan Shetty', aid: 5, did: 5 },
+    { sid: 2, name: 'Ananya Rao', aid: 1, did: 1 },
+    { sid: 3, name: 'Vikram Iyer', aid: 1, did: 1 },
+    { sid: 4, name: 'Meghana Bhat', aid: 1, did: 1 },
+
+    { sid: 5, name: 'Sneha Patil', aid: 2, did: 2 },
+    { sid: 6, name: 'Arjun Nair', aid: 2, did: 2 },
+    { sid: 7, name: 'Divya Kulkarni', aid: 2, did: 2 },
+    { sid: 8, name: 'Rahul Kambli', aid: 2, did: 2 },
+
+    { sid: 9, name: 'Aditya Desai', aid: 3, did: 3 },
+    { sid: 10, name: 'Pooja Shinde', aid: 3, did: 3 },
+    { sid: 11, name: 'Nikhil Jadhav', aid: 3, did: 3 },
+    { sid: 12, name: 'Swati More', aid: 3, did: 3 },
+
+    { sid: 13, name: 'Priya Joshi', aid: 4, did: 4 },
+    { sid: 14, name: 'Om Deshmukh', aid: 4, did: 4 },
+    { sid: 15, name: 'Kavya Pawar', aid: 4, did: 4 },
+    { sid: 16, name: 'Siddharth Kale', aid: 4, did: 4 },
+
+    { sid: 17, name: 'Karan Shetty', aid: 5, did: 5 },
+    { sid: 18, name: 'Ishita Naik', aid: 5, did: 5 },
+    { sid: 19, name: 'Varun Hegde', aid: 5, did: 5 },
+    { sid: 20, name: 'Riya Kamath', aid: 5, did: 5 },
   ],
 };
 
@@ -81,6 +103,12 @@ const facultyOf = (did) => DATA.faculty.filter((f) => f.did === Number(did));
 const themesOf = (fid) => DATA.themes.filter((t) => t.fid === Number(fid));
 const artifactsOf = (tid) => DATA.artifacts.filter((a) => a.tid === Number(tid));
 const studentsOf = (aid) => DATA.students.filter((s) => s.aid === Number(aid));
+
+// Every team (the students on one artifact) is fixed at exactly this many
+// members - never more, never fewer. Enforced in the sample data above and,
+// for a real Postgres instance, by the enforce_team_size trigger in
+// server/db/schema.sql.
+const TEAM_SIZE = 4;
 
 /** Every artifact under a college, walked all the way down the chain - used to roll RAG counts up to the portfolio page. */
 function artifactsUnderCollege(cid) {

@@ -69,7 +69,7 @@
         document.getElementById('page-title').textContent = theme.name;
         const artifacts = artifactsOf(theme.tid);
         document.getElementById('page-sub').textContent =
-          `${artifacts.length} artefact${artifacts.length === 1 ? '' : 's'}. Select one to see the student working on it.`;
+          `${artifacts.length} artefact${artifacts.length === 1 ? '' : 's'}. Every team is fixed at ${TEAM_SIZE} students. Select one to see its team.`;
 
         function capitalize(word) { return word.charAt(0).toUpperCase() + word.slice(1); }
 
@@ -79,7 +79,7 @@
             return `
               <a class="card college-card link-card" href="student.html?aid=${a.aid}">
                 <h2>${a.name}</h2>
-                <div class="campus">${studentsOf(a.aid).length} student${studentsOf(a.aid).length === 1 ? '' : 's'}</div>
+                <div class="campus">Team of ${TEAM_SIZE}</div>
                 <div class="status-line">
                   <span class="rag-dot rag-dot--tiny rag-dot--${st.status}" aria-hidden="true"></span>
                   <span>${capitalize(st.status)} · ${st.progress}%</span>

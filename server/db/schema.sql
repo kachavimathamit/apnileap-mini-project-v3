@@ -69,3 +69,33 @@ CREATE TABLE Student (
   A_id    INTEGER NOT NULL REFERENCES Artifact(A_id),
   D_id    INTEGER NOT NULL REFERENCES Dept(Did)
 );
+
+-- ------------------------------------------------------------
+-- Team-size rule: every artifact's team (its Student rows) is
+-- fixed at exactly 4 students - never more, and never fewer once
+-- set. A plain CHECK constraint can't count sibling rows, so this
+-- is enforced with a trigger: it blocks a 5th student joining a
+-- team, and blocks removing anyone once a team is assigned - team
+-- composition is meant to be set once and left alone, not varied.
+-- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION enforce_team_size() RETURNS TRIGGER AS $$
+DECLARE
+  team_size CONSTANT INTEGER := 4;
+  current_count INTEGER;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    SELECT COUNT(*) INTO current_count FROM Student WHERE A_id = NEW.A_id;
+    IF current_count >= team_size THEN
+      RAISE EXCEPTION 'Artifact % already has % students - team size is fixed at %', NEW.A_id, current_count, team_size;
+    END IF;
+    RETURN NEW;
+  ELSIF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'Team membership is fixed once assigned - students cannot be removed from an artifact';
+  END IF;
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_enforce_team_size
+  BEFORE INSERT OR DELETE ON Student
+  FOR EACH ROW EXECUTE FUNCTION enforce_team_size();

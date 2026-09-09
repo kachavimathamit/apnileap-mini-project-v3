@@ -63,9 +63,30 @@ INSERT INTO Artifact (A_name, T_id) VALUES
   ('Hostel Inventory Management System', 4),
   ('Peer Notes Sharing Network', 5);
 
+-- Every team (the students on one artifact) is fixed at exactly 4 members,
+-- never more or fewer — see the enforce_team_size trigger in schema.sql.
 INSERT INTO Student (S_name, A_id, D_id) VALUES
   ('Rohan Kulkarni', 1, 1),
+  ('Ananya Rao', 1, 1),
+  ('Vikram Iyer', 1, 1),
+  ('Meghana Bhat', 1, 1),
+
   ('Sneha Patil', 2, 2),
+  ('Arjun Nair', 2, 2),
+  ('Divya Kulkarni', 2, 2),
+  ('Rahul Kambli', 2, 2),
+
   ('Aditya Desai', 3, 3),
+  ('Pooja Shinde', 3, 3),
+  ('Nikhil Jadhav', 3, 3),
+  ('Swati More', 3, 3),
+
   ('Priya Joshi', 4, 4),
-  ('Karan Shetty', 5, 5);
+  ('Om Deshmukh', 4, 4),
+  ('Kavya Pawar', 4, 4),
+  ('Siddharth Kale', 4, 4),
+
+  ('Karan Shetty', 5, 5),
+  ('Ishita Naik', 5, 5),
+  ('Varun Hegde', 5, 5),
+  ('Riya Kamath', 5, 5);

@@ -67,8 +67,12 @@
 
         document.getElementById('page-title').textContent = artifact.name;
         const students = studentsOf(artifact.aid);
-        document.getElementById('page-sub').textContent =
-          `${students.length} student${students.length === 1 ? '' : 's'} working on this artefact — end of the trail.`;
+        // Team size is a fixed rule (see TEAM_SIZE in data.js), not just
+        // whatever the sample data happens to have - surface it honestly if
+        // it's ever off, rather than silently showing a short-staffed team.
+        document.getElementById('page-sub').textContent = students.length === TEAM_SIZE
+          ? `Team of ${TEAM_SIZE} students working on this artefact — end of the trail.`
+          : `${students.length} of ${TEAM_SIZE} students recorded — every team must be fixed at ${TEAM_SIZE}.`;
 
         // Leaf level — a plain card, not a link, since there is nothing below a student.
         document.getElementById('grid').innerHTML = students.map((s) => `
