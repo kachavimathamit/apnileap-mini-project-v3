@@ -62,12 +62,18 @@ CREATE TABLE Artifact (
 
 -- ------------------------------------------------------------
 -- Student — owns/works on one artifact, within a department.
+-- SRN is the registrar-issued identifier (unique) - names alone
+-- were never a reliable way to identify a student.
 -- ------------------------------------------------------------
 CREATE TABLE Student (
-  S_id    SERIAL PRIMARY KEY,
-  S_name  VARCHAR(200) NOT NULL,
-  A_id    INTEGER NOT NULL REFERENCES Artifact(A_id),
-  D_id    INTEGER NOT NULL REFERENCES Dept(Did)
+  S_id      SERIAL PRIMARY KEY,
+  S_name    VARCHAR(200) NOT NULL,
+  SRN       VARCHAR(20) NOT NULL UNIQUE,
+  Roll_no   VARCHAR(10) NOT NULL,
+  Division  VARCHAR(5) NOT NULL,
+  Semester  INTEGER NOT NULL,
+  A_id      INTEGER NOT NULL REFERENCES Artifact(A_id),
+  D_id      INTEGER NOT NULL REFERENCES Dept(Did)
 );
 
 -- ------------------------------------------------------------

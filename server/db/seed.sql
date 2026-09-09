@@ -65,28 +65,31 @@ INSERT INTO Artifact (A_name, T_id) VALUES
 
 -- Every team (the students on one artifact) is fixed at exactly 4 members,
 -- never more or fewer — see the enforce_team_size trigger in schema.sql.
-INSERT INTO Student (S_name, A_id, D_id) VALUES
-  ('Rohan Kulkarni', 1, 1),
-  ('Ananya Rao', 1, 1),
-  ('Vikram Iyer', 1, 1),
-  ('Meghana Bhat', 1, 1),
+-- Each team shares one Division, as project teams are usually drawn from
+-- the same class section; Semester 7 throughout since a mini-project is a
+-- final-year course.
+INSERT INTO Student (S_name, SRN, Roll_no, Division, Semester, A_id, D_id) VALUES
+  ('Rohan Kulkarni',  '01FE22BCS001', '01', 'A', 7, 1, 1),
+  ('Ananya Rao',      '01FE22BCS002', '02', 'A', 7, 1, 1),
+  ('Vikram Iyer',     '01FE22BCS003', '03', 'A', 7, 1, 1),
+  ('Meghana Bhat',    '01FE22BCS004', '04', 'A', 7, 1, 1),
 
-  ('Sneha Patil', 2, 2),
-  ('Arjun Nair', 2, 2),
-  ('Divya Kulkarni', 2, 2),
-  ('Rahul Kambli', 2, 2),
+  ('Sneha Patil',     '01FE22BEC001', '01', 'B', 7, 2, 2),
+  ('Arjun Nair',      '01FE22BEC002', '02', 'B', 7, 2, 2),
+  ('Divya Kulkarni',  '01FE22BEC003', '03', 'B', 7, 2, 2),
+  ('Rahul Kambli',    '01FE22BEC004', '04', 'B', 7, 2, 2),
 
-  ('Aditya Desai', 3, 3),
-  ('Pooja Shinde', 3, 3),
-  ('Nikhil Jadhav', 3, 3),
-  ('Swati More', 3, 3),
+  ('Aditya Desai',    '01FE22BME001', '01', 'A', 7, 3, 3),
+  ('Pooja Shinde',    '01FE22BME002', '02', 'A', 7, 3, 3),
+  ('Nikhil Jadhav',   '01FE22BME003', '03', 'A', 7, 3, 3),
+  ('Swati More',      '01FE22BME004', '04', 'A', 7, 3, 3),
 
-  ('Priya Joshi', 4, 4),
-  ('Om Deshmukh', 4, 4),
-  ('Kavya Pawar', 4, 4),
-  ('Siddharth Kale', 4, 4),
+  ('Priya Joshi',     '01FE22BCV001', '01', 'B', 7, 4, 4),
+  ('Om Deshmukh',     '01FE22BCV002', '02', 'B', 7, 4, 4),
+  ('Kavya Pawar',     '01FE22BCV003', '03', 'B', 7, 4, 4),
+  ('Siddharth Kale',  '01FE22BCV004', '04', 'B', 7, 4, 4),
 
-  ('Karan Shetty', 5, 5),
-  ('Ishita Naik', 5, 5),
-  ('Varun Hegde', 5, 5),
-  ('Riya Kamath', 5, 5);
+  ('Karan Shetty',    '01FE22BCA001', '01', 'A', 7, 5, 5),
+  ('Ishita Naik',     '01FE22BCA002', '02', 'A', 7, 5, 5),
+  ('Varun Hegde',     '01FE22BCA003', '03', 'A', 7, 5, 5),
+  ('Riya Kamath',     '01FE22BCA004', '04', 'A', 7, 5, 5);

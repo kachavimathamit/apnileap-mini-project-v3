@@ -78,7 +78,8 @@
         document.getElementById('grid').innerHTML = students.map((s) => `
           <section class="card college-card">
             <h2>${s.name}</h2>
-            <div class="campus">Department: ${findDept(s.did).name}</div>
+            <div class="campus">${s.srn} · Roll No ${s.rollNo}</div>
+            <div class="campus">Div ${s.division} · Sem ${s.semester} · ${findDept(s.did).name}</div>
           </section>
         `).join('') || '<p class="empty">No student recorded yet for this artefact.</p>';
       }

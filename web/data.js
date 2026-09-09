@@ -59,32 +59,35 @@ const DATA = {
 
   // Team size is a fixed rule, not a sample-data accident: every artifact
   // has exactly 4 students, never more or fewer (see TEAM_SIZE below and
-  // the enforce_team_size trigger in server/db/schema.sql).
+  // the enforce_team_size trigger in server/db/schema.sql). srn is the
+  // registrar-issued identifier - unique, unlike name. Each team shares one
+  // division (project teams are usually drawn from the same class section);
+  // semester is 7 throughout since a mini-project is a final-year course.
   students: [
-    { sid: 1, name: 'Rohan Kulkarni', aid: 1, did: 1 },
-    { sid: 2, name: 'Ananya Rao', aid: 1, did: 1 },
-    { sid: 3, name: 'Vikram Iyer', aid: 1, did: 1 },
-    { sid: 4, name: 'Meghana Bhat', aid: 1, did: 1 },
+    { sid: 1, name: 'Rohan Kulkarni', srn: '01FE22BCS001', rollNo: '01', division: 'A', semester: 7, aid: 1, did: 1 },
+    { sid: 2, name: 'Ananya Rao', srn: '01FE22BCS002', rollNo: '02', division: 'A', semester: 7, aid: 1, did: 1 },
+    { sid: 3, name: 'Vikram Iyer', srn: '01FE22BCS003', rollNo: '03', division: 'A', semester: 7, aid: 1, did: 1 },
+    { sid: 4, name: 'Meghana Bhat', srn: '01FE22BCS004', rollNo: '04', division: 'A', semester: 7, aid: 1, did: 1 },
 
-    { sid: 5, name: 'Sneha Patil', aid: 2, did: 2 },
-    { sid: 6, name: 'Arjun Nair', aid: 2, did: 2 },
-    { sid: 7, name: 'Divya Kulkarni', aid: 2, did: 2 },
-    { sid: 8, name: 'Rahul Kambli', aid: 2, did: 2 },
+    { sid: 5, name: 'Sneha Patil', srn: '01FE22BEC001', rollNo: '01', division: 'B', semester: 7, aid: 2, did: 2 },
+    { sid: 6, name: 'Arjun Nair', srn: '01FE22BEC002', rollNo: '02', division: 'B', semester: 7, aid: 2, did: 2 },
+    { sid: 7, name: 'Divya Kulkarni', srn: '01FE22BEC003', rollNo: '03', division: 'B', semester: 7, aid: 2, did: 2 },
+    { sid: 8, name: 'Rahul Kambli', srn: '01FE22BEC004', rollNo: '04', division: 'B', semester: 7, aid: 2, did: 2 },
 
-    { sid: 9, name: 'Aditya Desai', aid: 3, did: 3 },
-    { sid: 10, name: 'Pooja Shinde', aid: 3, did: 3 },
-    { sid: 11, name: 'Nikhil Jadhav', aid: 3, did: 3 },
-    { sid: 12, name: 'Swati More', aid: 3, did: 3 },
+    { sid: 9, name: 'Aditya Desai', srn: '01FE22BME001', rollNo: '01', division: 'A', semester: 7, aid: 3, did: 3 },
+    { sid: 10, name: 'Pooja Shinde', srn: '01FE22BME002', rollNo: '02', division: 'A', semester: 7, aid: 3, did: 3 },
+    { sid: 11, name: 'Nikhil Jadhav', srn: '01FE22BME003', rollNo: '03', division: 'A', semester: 7, aid: 3, did: 3 },
+    { sid: 12, name: 'Swati More', srn: '01FE22BME004', rollNo: '04', division: 'A', semester: 7, aid: 3, did: 3 },
 
-    { sid: 13, name: 'Priya Joshi', aid: 4, did: 4 },
-    { sid: 14, name: 'Om Deshmukh', aid: 4, did: 4 },
-    { sid: 15, name: 'Kavya Pawar', aid: 4, did: 4 },
-    { sid: 16, name: 'Siddharth Kale', aid: 4, did: 4 },
+    { sid: 13, name: 'Priya Joshi', srn: '01FE22BCV001', rollNo: '01', division: 'B', semester: 7, aid: 4, did: 4 },
+    { sid: 14, name: 'Om Deshmukh', srn: '01FE22BCV002', rollNo: '02', division: 'B', semester: 7, aid: 4, did: 4 },
+    { sid: 15, name: 'Kavya Pawar', srn: '01FE22BCV003', rollNo: '03', division: 'B', semester: 7, aid: 4, did: 4 },
+    { sid: 16, name: 'Siddharth Kale', srn: '01FE22BCV004', rollNo: '04', division: 'B', semester: 7, aid: 4, did: 4 },
 
-    { sid: 17, name: 'Karan Shetty', aid: 5, did: 5 },
-    { sid: 18, name: 'Ishita Naik', aid: 5, did: 5 },
-    { sid: 19, name: 'Varun Hegde', aid: 5, did: 5 },
-    { sid: 20, name: 'Riya Kamath', aid: 5, did: 5 },
+    { sid: 17, name: 'Karan Shetty', srn: '01FE22BCA001', rollNo: '01', division: 'A', semester: 7, aid: 5, did: 5 },
+    { sid: 18, name: 'Ishita Naik', srn: '01FE22BCA002', rollNo: '02', division: 'A', semester: 7, aid: 5, did: 5 },
+    { sid: 19, name: 'Varun Hegde', srn: '01FE22BCA003', rollNo: '03', division: 'A', semester: 7, aid: 5, did: 5 },
+    { sid: 20, name: 'Riya Kamath', srn: '01FE22BCA004', rollNo: '04', division: 'A', semester: 7, aid: 5, did: 5 },
   ],
 };
 
