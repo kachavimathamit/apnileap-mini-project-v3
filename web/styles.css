@@ -198,10 +198,6 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 }
 .demo-accounts p { margin: 0 0 0.5rem; }
 .demo-accounts p:last-child { margin: 0; }
-.demo-accounts summary { cursor: pointer; color: var(--brand); font-weight: 600; }
-.demo-roles { width: 100%; margin-top: var(--sp-2); border-collapse: collapse; }
-.demo-roles th, .demo-roles td { text-align: left; padding: 3px 6px 3px 0; border-bottom: 1px solid var(--line); }
-.demo-roles code { background: var(--surface-alt); padding: 1px 4px; border-radius: 3px; }
 
 @media (max-width: 30rem) {
   .auth-card { padding: var(--sp-4); }
@@ -354,3 +350,37 @@ a.link-card:hover h2 { color: var(--brand-dark); }
 .rag-legend--mini .rag-item__count { font-size: 1rem; }
 .rag-legend--mini .rag-item__label { font-size: 0.72rem; }
 .rag-legend--mini .rag-item { gap: 0.15rem; }
+
+/* Per-artifact status line + progress bar, shown on every artifact card
+   (read-only) — only the artifact's own faculty mentor gets an edit form,
+   in the .status-panel section below the grid. */
+.rag-dot--tiny { width: 0.7rem; height: 0.7rem; display: inline-block; vertical-align: middle; }
+.status-line {
+  display: flex; align-items: center; gap: 0.35rem;
+  margin-top: 0.5rem; font-size: 0.78rem; color: var(--ink-soft);
+}
+.progress-bar {
+  margin-top: 0.35rem; height: 0.4rem; border-radius: 999px;
+  background: var(--surface-alt); overflow: hidden;
+}
+.progress-bar__fill { height: 100%; border-radius: inherit; }
+.progress-bar__fill--green { background: var(--green); }
+.progress-bar__fill--yellow { background: var(--yellow-solid); }
+.progress-bar__fill--red { background: var(--red); }
+
+.status-panel { padding: var(--sp-3) var(--sp-4); flex: none; }
+.status-panel h2 { font-size: var(--fs-h4); margin: 0 0 var(--sp-2); }
+.status-form {
+  display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap;
+  padding: var(--sp-2) 0; border-top: 1px solid var(--line);
+}
+.status-form:first-of-type { border-top: none; }
+.status-form__name { font-weight: 600; flex: 1 1 12rem; }
+.status-form label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; color: var(--ink-soft); }
+.status-form select, .status-form input[type='number'] {
+  min-height: 2rem; padding: 0.2rem 0.5rem;
+  border: 1px solid var(--line); border-radius: var(--radius);
+}
+.status-form input[type='number'] { width: 4.5rem; }
+.status-form button { min-height: 2rem; padding: 0 var(--sp-3); }
+.status-form__saved { color: var(--green); font-size: 0.85rem; font-weight: 600; }

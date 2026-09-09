@@ -38,14 +38,13 @@
     }
 
     function run(session) {
-    // Project-level RAG status. No project has been added yet in this build
-    // (only the org hierarchy down to Student exists so far), so every
-    // count is honestly 0 rather than a made-up number.
-    function ragCountsFor(_scopeId) {
+    // Real RAG counts, rolled up from each artifact's status - set only by
+    // the faculty mentor who owns it (see data.js: setArtifactStatus).
+    function toRagArray(counts) {
       return [
-        { label: 'Green', className: 'rag-dot--green', count: 0 },
-        { label: 'Yellow', className: 'rag-dot--yellow', count: 0 },
-        { label: 'Red', className: 'rag-dot--red', count: 0 },
+        { label: 'Green', className: 'rag-dot--green', count: counts.green },
+        { label: 'Yellow', className: 'rag-dot--yellow', count: counts.yellow },
+        { label: 'Red', className: 'rag-dot--red', count: counts.red },
       ];
     }
 
@@ -68,11 +67,17 @@
       <a class="card college-card link-card" href="school.html?cid=${c.cid}">
         <h2>${c.name}</h2>
         <div class="campus">${c.campus} Campus</div>
-        ${renderRagLegend(ragCountsFor(c.cid), 'rag-legend--mini')}
+        ${renderRagLegend(toRagArray(ragCounts(artifactsUnderCollege(c.cid))), 'rag-legend--mini')}
       </a>
     `).join('');
 
-    document.getElementById('rag-legend-slot').innerHTML = renderRagLegend(ragCountsFor(null), 'rag-legend--center');
+    // Consolidated status covers only the colleges this role is authorized to see.
+    const consolidated = colleges.reduce((totals, c) => {
+      const counts = ragCounts(artifactsUnderCollege(c.cid));
+      totals.red += counts.red; totals.yellow += counts.yellow; totals.green += counts.green;
+      return totals;
+    }, { red: 0, yellow: 0, green: 0 });
+    document.getElementById('rag-legend-slot').innerHTML = renderRagLegend(toRagArray(consolidated), 'rag-legend--center');
     }
   </script>
 </body>

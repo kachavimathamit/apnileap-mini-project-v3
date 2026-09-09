@@ -46,12 +46,15 @@ const DATA = {
     { tid: 5, name: 'Peer-to-Peer File Sharing System', did: 5, fid: 5 },
   ],
 
+  // status/progress default to "not started" - the faculty mentor who owns
+  // each artifact's theme is the only role who can move these forward (see
+  // setArtifactStatus below), so nobody's work is marked done for them.
   artifacts: [
-    { aid: 1, name: 'Campus Lab Access Control Portal', tid: 1 },
-    { aid: 2, name: 'Digital Library Search Engine', tid: 2 },
-    { aid: 3, name: 'Automated Exam Timetable Generator', tid: 3 },
-    { aid: 4, name: 'Hostel Inventory Management System', tid: 4 },
-    { aid: 5, name: 'Peer Notes Sharing Network', tid: 5 },
+    { aid: 1, name: 'Campus Lab Access Control Portal', tid: 1, status: 'red', progress: 0 },
+    { aid: 2, name: 'Digital Library Search Engine', tid: 2, status: 'red', progress: 0 },
+    { aid: 3, name: 'Automated Exam Timetable Generator', tid: 3, status: 'red', progress: 0 },
+    { aid: 4, name: 'Hostel Inventory Management System', tid: 4, status: 'red', progress: 0 },
+    { aid: 5, name: 'Peer Notes Sharing Network', tid: 5, status: 'red', progress: 0 },
   ],
 
   students: [
@@ -78,6 +81,63 @@ const facultyOf = (did) => DATA.faculty.filter((f) => f.did === Number(did));
 const themesOf = (fid) => DATA.themes.filter((t) => t.fid === Number(fid));
 const artifactsOf = (tid) => DATA.artifacts.filter((a) => a.tid === Number(tid));
 const studentsOf = (aid) => DATA.students.filter((s) => s.aid === Number(aid));
+
+/** Every artifact under a college, walked all the way down the chain - used to roll RAG counts up to the portfolio page. */
+function artifactsUnderCollege(cid) {
+  return schoolsOf(cid)
+    .flatMap((s) => deptsOf(s.sid))
+    .flatMap((d) => facultyOf(d.did))
+    .flatMap((f) => themesOf(f.fid))
+    .flatMap((t) => artifactsOf(t.tid));
+}
+
+// ------------------------------------------------------------ artifact status (RAG + % progress)
+//
+// Only a faculty mentor may move their own artifact's status/progress -
+// everyone else only ever reads it. Since there's no backend, an edit is an
+// override kept in localStorage (so it survives a refresh and even a new
+// session on the same browser); DATA.artifacts above supplies the starting
+// "not started" default whenever no override exists yet.
+const ARTIFACT_STATUS_KEY = 'apnileap_artifact_status';
+
+function loadStatusOverrides() {
+  try {
+    return JSON.parse(localStorage.getItem(ARTIFACT_STATUS_KEY)) || {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function getArtifactStatus(aid) {
+  const artifact = findArtifact(aid);
+  const override = loadStatusOverrides()[artifact.aid];
+  return override || { status: artifact.status, progress: artifact.progress };
+}
+
+/** The one faculty member allowed to edit a given artifact's status: the mentor whose own theme it sits under. */
+function canEditArtifactStatus(session, artifact) {
+  if (!session || session.scope.level !== 'faculty') return false;
+  const theme = findTheme(artifact.tid);
+  return theme.fid === session.scope.fid;
+}
+
+/** status: 'red' | 'yellow' | 'green'. Returns false (and writes nothing) if the signed-in session isn't the artifact's own mentor. */
+function setArtifactStatus(session, aid, status, progress) {
+  const artifact = findArtifact(aid);
+  if (!artifact || !canEditArtifactStatus(session, artifact)) return false;
+  const clampedProgress = Math.max(0, Math.min(100, Math.round(Number(progress) || 0)));
+  const overrides = loadStatusOverrides();
+  overrides[artifact.aid] = { status, progress: clampedProgress };
+  localStorage.setItem(ARTIFACT_STATUS_KEY, JSON.stringify(overrides));
+  return true;
+}
+
+/** Counts of red/yellow/green across a set of artifacts, e.g. artifactsUnderCollege(cid) or DATA.artifacts for the global total. */
+function ragCounts(artifacts) {
+  const counts = { red: 0, yellow: 0, green: 0 };
+  artifacts.forEach((a) => { counts[getArtifactStatus(a.aid).status] += 1; });
+  return counts;
+}
 
 // ------------------------------------------------------------ roles & role-based access
 //

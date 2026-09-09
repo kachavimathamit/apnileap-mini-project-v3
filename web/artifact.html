@@ -16,6 +16,11 @@
       </div>
 
       <div class="grid grid--cards" id="grid"></div>
+
+      <section class="card status-panel" id="edit-status-card" hidden>
+        <h2>Update project status</h2>
+        <div id="edit-status-forms"></div>
+      </section>
     </main>
   </div>
 
@@ -66,9 +71,67 @@
         document.getElementById('page-sub').textContent =
           `${artifacts.length} artefact${artifacts.length === 1 ? '' : 's'}. Select one to see the student working on it.`;
 
-        document.getElementById('grid').innerHTML = artifacts.map((a) => cardLink(
-          `student.html?aid=${a.aid}`, a.name, `${studentsOf(a.aid).length} student${studentsOf(a.aid).length === 1 ? '' : 's'}`,
-        )).join('') || '<p class="empty">No artefact recorded yet for this theme.</p>';
+        function capitalize(word) { return word.charAt(0).toUpperCase() + word.slice(1); }
+
+        function renderGrid() {
+          document.getElementById('grid').innerHTML = artifacts.map((a) => {
+            const st = getArtifactStatus(a.aid);
+            return `
+              <a class="card college-card link-card" href="student.html?aid=${a.aid}">
+                <h2>${a.name}</h2>
+                <div class="campus">${studentsOf(a.aid).length} student${studentsOf(a.aid).length === 1 ? '' : 's'}</div>
+                <div class="status-line">
+                  <span class="rag-dot rag-dot--tiny rag-dot--${st.status}" aria-hidden="true"></span>
+                  <span>${capitalize(st.status)} · ${st.progress}%</span>
+                </div>
+                <div class="progress-bar"><div class="progress-bar__fill progress-bar__fill--${st.status}" style="width:${st.progress}%"></div></div>
+              </a>
+            `;
+          }).join('') || '<p class="empty">No artefact recorded yet for this theme.</p>';
+        }
+        renderGrid();
+
+        // Only the faculty mentor who owns this theme may edit its artifacts'
+        // status/progress - every other role only ever sees renderGrid() above.
+        if (artifacts.length && canEditArtifactStatus(session, artifacts[0])) {
+          const editCard = document.getElementById('edit-status-card');
+          editCard.hidden = false;
+          document.getElementById('edit-status-forms').innerHTML = artifacts.map((a) => {
+            const st = getArtifactStatus(a.aid);
+            return `
+              <form class="status-form" data-aid="${a.aid}">
+                <span class="status-form__name">${a.name}</span>
+                <label>Status
+                  <select name="status">
+                    <option value="red" ${st.status === 'red' ? 'selected' : ''}>Red</option>
+                    <option value="yellow" ${st.status === 'yellow' ? 'selected' : ''}>Yellow</option>
+                    <option value="green" ${st.status === 'green' ? 'selected' : ''}>Green</option>
+                  </select>
+                </label>
+                <label>Progress %
+                  <input type="number" name="progress" min="0" max="100" step="1" value="${st.progress}" />
+                </label>
+                <button type="submit" class="btn--primary">Save</button>
+                <span class="status-form__saved" hidden>Saved</span>
+              </form>
+            `;
+          }).join('');
+
+          document.querySelectorAll('.status-form').forEach((form) => {
+            form.addEventListener('submit', (event) => {
+              event.preventDefault();
+              const aid = Number(form.dataset.aid);
+              const status = form.elements.status.value;
+              const progress = form.elements.progress.value;
+              if (setArtifactStatus(session, aid, status, progress)) {
+                renderGrid();
+                const saved = form.querySelector('.status-form__saved');
+                saved.hidden = false;
+                setTimeout(() => { saved.hidden = true; }, 1500);
+              }
+            });
+          });
+        }
       }
     }
   </script>
