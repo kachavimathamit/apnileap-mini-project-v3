@@ -109,7 +109,10 @@ strong, b { font-weight: 650; }
   margin-bottom: var(--sp-1); line-height: 1.4;
 }
 
-input[type='email'], input[type='password'] {
+/* Scoped to .auth-card (not a bare input[type='text']) so this never
+   collides with the differently-sized text inputs on the student-edit
+   cards elsewhere in the app (see .student-edit-row further down). */
+input[type='email'], input[type='password'], .auth-card input[type='text'] {
   width: 100%;
   min-height: var(--tap);
   padding: 0.6rem 0.75rem;
@@ -178,6 +181,15 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   margin-bottom: var(--sp-5);
 }
 .auth-card button[type='submit'] { width: 100%; }
+
+.captcha-row { display: flex; gap: var(--sp-2); align-items: stretch; }
+.captcha-row input { flex: 1; }
+.captcha-refresh {
+  flex: none; width: var(--tap); padding: 0;
+  font-size: 1.2rem; line-height: 1;
+  background: var(--surface); border: 1.5px solid var(--line); color: var(--ink-soft);
+}
+.captcha-refresh:hover { color: var(--brand); border-color: var(--ink-faint); }
 
 .auth-foot {
   margin-top: var(--sp-3); font-size: var(--fs-body); text-align: center;

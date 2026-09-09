@@ -25,6 +25,13 @@
           <label for="password">Password</label>
           <input id="password" name="password" type="password" autocomplete="current-password" required />
         </div>
+        <div class="field">
+          <label for="captcha-answer">Verify you're human: <span id="captcha-question"></span></label>
+          <div class="captcha-row">
+            <input id="captcha-answer" name="captcha" type="text" inputmode="numeric" autocomplete="off" required />
+            <button type="button" id="captcha-refresh" class="captcha-refresh" aria-label="Get a new question" title="Get a new question">&#8635;</button>
+          </div>
+        </div>
         <button type="submit" class="btn--primary" id="submit-btn">Sign in</button>
       </form>
 
@@ -52,10 +59,37 @@
     const errorText = document.getElementById('error-text');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
+    const captchaQuestion = document.getElementById('captcha-question');
+    const captchaAnswerInput = document.getElementById('captcha-answer');
+    const captchaRefreshBtn = document.getElementById('captcha-refresh');
+
+    // Simple arithmetic CAPTCHA — there's no real backend to run a proper
+    // one against, so this exists only as a UI speed bump against trivial
+    // scripted submits, not real bot protection. A fresh pair of numbers is
+    // generated on load and after every attempt, so an answer can't be reused.
+    let captchaAnswer = 0;
+    function newCaptcha() {
+      const a = 1 + Math.floor(Math.random() * 10);
+      const b = 1 + Math.floor(Math.random() * 10);
+      captchaAnswer = a + b;
+      captchaQuestion.textContent = `What is ${a} + ${b}?`;
+      captchaAnswerInput.value = '';
+    }
+    captchaRefreshBtn.addEventListener('click', newCaptcha);
+    newCaptcha();
 
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       errorBox.hidden = true;
+
+      if (Number(captchaAnswerInput.value.trim()) !== captchaAnswer) {
+        errorText.textContent = 'That answer is incorrect. Please solve the new question below.';
+        errorBox.hidden = false;
+        newCaptcha();
+        captchaAnswerInput.focus();
+        return;
+      }
+
       submitBtn.disabled = true;
       submitBtn.textContent = 'Signing in…';
 
@@ -72,6 +106,7 @@
         submitBtn.textContent = 'Sign in';
         errorText.textContent = 'Email address or password is incorrect.';
         errorBox.hidden = false;
+        newCaptcha();
       }, 500);
     });
   </script>
