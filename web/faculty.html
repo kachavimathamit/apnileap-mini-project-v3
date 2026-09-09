@@ -51,7 +51,7 @@
         document.getElementById('page-title').textContent = dept.name;
         const faculty = facultyOf(dept.did);
         document.getElementById('page-sub').textContent =
-          `${faculty.length} faculty member${faculty.length === 1 ? '' : 's'}. Select one to see their project theme.`;
+          `${faculty.length} faculty member${faculty.length === 1 ? '' : 's'} · HOD: ${dept.hodName} (${dept.code}). Select one to see their project theme.`;
 
         document.getElementById('grid').innerHTML = faculty.map((f) => cardLink(
           `theme.html?fid=${f.fid}`, f.name, `${themesOf(f.fid).length} theme${themesOf(f.fid).length === 1 ? '' : 's'}`,

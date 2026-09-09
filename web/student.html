@@ -66,22 +66,70 @@
         renderBreadcrumbs(document.getElementById('breadcrumbs'), trail);
 
         document.getElementById('page-title').textContent = artifact.name;
-        const students = studentsOf(artifact.aid);
-        // Team size is a fixed rule (see TEAM_SIZE in data.js), not just
-        // whatever the sample data happens to have - surface it honestly if
-        // it's ever off, rather than silently showing a short-staffed team.
-        document.getElementById('page-sub').textContent = students.length === TEAM_SIZE
-          ? `Team of ${TEAM_SIZE} students working on this artefact — end of the trail.`
-          : `${students.length} of ${TEAM_SIZE} students recorded — every team must be fixed at ${TEAM_SIZE}.`;
 
-        // Leaf level — a plain card, not a link, since there is nothing below a student.
-        document.getElementById('grid').innerHTML = students.map((s) => `
-          <section class="card college-card">
-            <h2>${s.name}</h2>
-            <div class="campus">${s.srn} · Roll No ${s.rollNo}</div>
-            <div class="campus">Div ${s.division} · Sem ${s.semester} · ${findDept(s.did).name}</div>
-          </section>
-        `).join('') || '<p class="empty">No student recorded yet for this artefact.</p>';
+        // Only the faculty mentor who owns this team may edit its students'
+        // details - checked once since every student on this page shares
+        // the same team (same theme), so it's the same answer for all of them.
+        const canEdit = studentsOf(artifact.aid).length > 0 && canEditStudent(session, studentsOf(artifact.aid)[0]);
+
+        function renderGrid() {
+          const students = studentsOf(artifact.aid);
+          // Team size is a fixed rule (see TEAM_SIZE in data.js), not just
+          // whatever the sample data happens to have - surface it honestly
+          // if it's ever off, rather than silently showing a short team.
+          document.getElementById('page-sub').textContent = students.length === TEAM_SIZE
+            ? `Team of ${TEAM_SIZE} students working on this artefact — end of the trail.`
+            : `${students.length} of ${TEAM_SIZE} students recorded — every team must be fixed at ${TEAM_SIZE}.`;
+
+          // Leaf level: a plain read-only card, since there is nothing below
+          // a student - except for the team's own mentor, who gets an
+          // inline-editable card instead (one card, not a card plus a
+          // separate edit form, to keep this page short enough to fit
+          // without scrolling).
+          document.getElementById('grid').innerHTML = students.map((s) => canEdit ? `
+            <form class="card college-card" data-sid="${s.sid}">
+              <input type="text" name="name" value="${s.name}" class="student-name-input" aria-label="Name" />
+              <div class="student-edit-row">
+                <input type="text" name="srn" value="${s.srn}" aria-label="SRN" />
+                <input type="text" name="rollNo" value="${s.rollNo}" aria-label="Roll No" style="width:2.8rem" />
+                <input type="text" name="division" value="${s.division}" aria-label="Division" style="width:2.4rem" />
+                <input type="number" name="semester" value="${s.semester}" min="1" max="8" aria-label="Semester" style="width:2.8rem" />
+              </div>
+              <div class="student-edit-row">
+                <button type="submit" class="btn--primary">Save</button>
+                <span class="status-form__saved" hidden>Saved</span>
+              </div>
+            </form>
+          ` : `
+            <section class="card college-card">
+              <h2>${s.name}</h2>
+              <div class="campus">${s.srn} · Roll No ${s.rollNo}</div>
+              <div class="campus">Div ${s.division} · Sem ${s.semester} · ${findDept(s.did).name}</div>
+            </section>
+          `).join('') || '<p class="empty">No student recorded yet for this artefact.</p>';
+
+          if (canEdit) {
+            document.querySelectorAll('#grid form').forEach((form) => {
+              form.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const sid = Number(form.dataset.sid);
+                const fields = {
+                  name: form.elements.name.value,
+                  srn: form.elements.srn.value,
+                  rollNo: form.elements.rollNo.value,
+                  division: form.elements.division.value,
+                  semester: form.elements.semester.value,
+                };
+                if (setStudentDetails(session, sid, fields)) {
+                  const saved = form.querySelector('.status-form__saved');
+                  saved.hidden = false;
+                  setTimeout(() => { saved.hidden = true; }, 1500);
+                }
+              });
+            });
+          }
+        }
+        renderGrid();
       }
     }
   </script>

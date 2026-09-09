@@ -28,19 +28,25 @@ INSERT INTO College (College_name, Campus) VALUES
 -- to end without ambiguity.
 -- ============================================================
 
-INSERT INTO School (Sname, Cid) VALUES
-  ('School of Computer Science & Engineering', 1),
-  ('School of Electronics & Communication Engineering', 1),
-  ('School of Mechanical Engineering', 1),
-  ('School of Civil Engineering', 1),
-  ('School of Computer Applications', 1);
+-- Each school is headed by its own Dean (School_code/Dean_name/Dean_contact
+-- are school-level fields — a Dean oversees the whole school, not one dept).
+INSERT INTO School (Sname, School_code, Dean_name, Dean_contact, Cid) VALUES
+  ('School of Computer Science & Engineering', 'SCH-CSE', 'Dr. Girish Hegde', 'dean.cse@kletech.example', 1),
+  ('School of Electronics & Communication Engineering', 'SCH-ECE', 'Dr. Vidya Rao', 'dean.ece@kletech.example', 1),
+  ('School of Mechanical Engineering', 'SCH-ME', 'Dr. Suresh Nayak', 'dean.me@kletech.example', 1),
+  ('School of Civil Engineering', 'SCH-CE', 'Dr. Anita Kulkarni', 'dean.ce@kletech.example', 1),
+  ('School of Computer Applications', 'SCH-CA', 'Dr. Prakash Shetty', 'dean.ca@kletech.example', 1);
 
-INSERT INTO Dept (Dname, Sid) VALUES
-  ('Computer Science and Engineering', 1),
-  ('Electronics and Communication Engineering', 2),
-  ('Mechanical Engineering', 3),
-  ('Civil Engineering', 4),
-  ('Computer Applications', 5);
+-- Each department is headed by its own HOD - a distinct role from the
+-- school's Dean. A school can hold multiple departments (the seed data
+-- keeps one per school for now, tracing 5 parallel chains end to end, but
+-- the schema places no limit on it).
+INSERT INTO Dept (Dname, Dept_code, HOD_name, HOD_contact, Sid) VALUES
+  ('Computer Science and Engineering', 'CSE', 'Dr. Nagesh Kulkarni', 'hod.cse@kletech.example', 1),
+  ('Electronics and Communication Engineering', 'ECE', 'Dr. Sunita Naik', 'hod.ece@kletech.example', 2),
+  ('Mechanical Engineering', 'ME', 'Dr. Ravindra Patil', 'hod.me@kletech.example', 3),
+  ('Civil Engineering', 'CE', 'Dr. Manjula Desai', 'hod.ce@kletech.example', 4),
+  ('Computer Applications', 'CA', 'Dr. Ajay Bhandari', 'hod.ca@kletech.example', 5);
 
 INSERT INTO Faculty (Fname, Did) VALUES
   ('Prof. Sanjay Hegde', 1),

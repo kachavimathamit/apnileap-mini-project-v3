@@ -45,7 +45,8 @@
         `${schools.length} school${schools.length === 1 ? '' : 's'} at this campus. Select one to see its departments.`;
 
       document.getElementById('grid').innerHTML = schools.map((s) => cardLink(
-        `dept.html?sid=${s.sid}`, s.name, `${deptsOf(s.sid).length} department${deptsOf(s.sid).length === 1 ? '' : 's'}`,
+        `dept.html?sid=${s.sid}`, s.name,
+        `${deptsOf(s.sid).length} department${deptsOf(s.sid).length === 1 ? '' : 's'} · Dean: ${s.deanName}`,
       )).join('') || '<p class="empty">No schools recorded yet for this college.</p>';
     }
   </script>

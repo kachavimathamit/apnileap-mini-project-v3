@@ -14,20 +14,25 @@ const DATA = {
 
   // Only Cid 1 (KLETech Hubballi Campus) has data below this level so far —
   // matches seed.sql, which deliberately scoped the sample rows to one college.
+  // A school is headed by its own Dean and can hold multiple departments -
+  // the schema places no 1:1 limit, this sample data just keeps one dept
+  // per school so all 5 chains stay easy to trace end to end.
   schools: [
-    { sid: 1, name: 'School of Computer Science & Engineering', cid: 1 },
-    { sid: 2, name: 'School of Electronics & Communication Engineering', cid: 1 },
-    { sid: 3, name: 'School of Mechanical Engineering', cid: 1 },
-    { sid: 4, name: 'School of Civil Engineering', cid: 1 },
-    { sid: 5, name: 'School of Computer Applications', cid: 1 },
+    { sid: 1, name: 'School of Computer Science & Engineering', code: 'SCH-CSE', deanName: 'Dr. Girish Hegde', deanContact: 'dean.cse@kletech.example', cid: 1 },
+    { sid: 2, name: 'School of Electronics & Communication Engineering', code: 'SCH-ECE', deanName: 'Dr. Vidya Rao', deanContact: 'dean.ece@kletech.example', cid: 1 },
+    { sid: 3, name: 'School of Mechanical Engineering', code: 'SCH-ME', deanName: 'Dr. Suresh Nayak', deanContact: 'dean.me@kletech.example', cid: 1 },
+    { sid: 4, name: 'School of Civil Engineering', code: 'SCH-CE', deanName: 'Dr. Anita Kulkarni', deanContact: 'dean.ce@kletech.example', cid: 1 },
+    { sid: 5, name: 'School of Computer Applications', code: 'SCH-CA', deanName: 'Dr. Prakash Shetty', deanContact: 'dean.ca@kletech.example', cid: 1 },
   ],
 
+  // A department is headed by its own HOD - a distinct role from the
+  // school's Dean above.
   depts: [
-    { did: 1, name: 'Computer Science and Engineering', sid: 1 },
-    { did: 2, name: 'Electronics and Communication Engineering', sid: 2 },
-    { did: 3, name: 'Mechanical Engineering', sid: 3 },
-    { did: 4, name: 'Civil Engineering', sid: 4 },
-    { did: 5, name: 'Computer Applications', sid: 5 },
+    { did: 1, name: 'Computer Science and Engineering', code: 'CSE', hodName: 'Dr. Nagesh Kulkarni', hodContact: 'hod.cse@kletech.example', sid: 1 },
+    { did: 2, name: 'Electronics and Communication Engineering', code: 'ECE', hodName: 'Dr. Sunita Naik', hodContact: 'hod.ece@kletech.example', sid: 2 },
+    { did: 3, name: 'Mechanical Engineering', code: 'ME', hodName: 'Dr. Ravindra Patil', hodContact: 'hod.me@kletech.example', sid: 3 },
+    { did: 4, name: 'Civil Engineering', code: 'CE', hodName: 'Dr. Manjula Desai', hodContact: 'hod.ce@kletech.example', sid: 4 },
+    { did: 5, name: 'Computer Applications', code: 'CA', hodName: 'Dr. Ajay Bhandari', hodContact: 'hod.ca@kletech.example', sid: 5 },
   ],
 
   faculty: [
@@ -105,7 +110,9 @@ const deptsOf = (sid) => DATA.depts.filter((d) => d.sid === Number(sid));
 const facultyOf = (did) => DATA.faculty.filter((f) => f.did === Number(did));
 const themesOf = (fid) => DATA.themes.filter((t) => t.fid === Number(fid));
 const artifactsOf = (tid) => DATA.artifacts.filter((a) => a.tid === Number(tid));
-const studentsOf = (aid) => DATA.students.filter((s) => s.aid === Number(aid));
+// Merges in any saved edit (see setStudentDetails below) so every page that
+// lists a team automatically shows the latest details, not the seed data.
+const studentsOf = (aid) => DATA.students.filter((s) => s.aid === Number(aid)).map((s) => getStudentDetails(s.sid));
 
 // Every team (the students on one artifact) is fixed at exactly this many
 // members - never more, never fewer. Enforced in the sample data above and,
@@ -168,6 +175,52 @@ function ragCounts(artifacts) {
   const counts = { red: 0, yellow: 0, green: 0 };
   artifacts.forEach((a) => { counts[getArtifactStatus(a.aid).status] += 1; });
   return counts;
+}
+
+// ------------------------------------------------------------ student details (name, SRN, roll no, division, semester)
+//
+// Same pattern as artifact status above: only the faculty mentor who owns a
+// student's team may edit that student's details, kept as a localStorage
+// override so it survives a refresh. aid/did are never editable this way -
+// changing them would move a student to a different team, which is exactly
+// what the fixed team-size rule above exists to prevent.
+const STUDENT_DETAILS_KEY = 'apnileap_student_details';
+
+function loadStudentOverrides() {
+  try {
+    return JSON.parse(localStorage.getItem(STUDENT_DETAILS_KEY)) || {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function getStudentDetails(sid) {
+  const student = DATA.students.find((s) => s.sid === Number(sid));
+  const override = loadStudentOverrides()[student.sid];
+  return override ? { ...student, ...override } : student;
+}
+
+/** The one faculty member allowed to edit a given student's details: the mentor whose theme owns that student's artifact. */
+function canEditStudent(session, student) {
+  if (!session || session.scope.level !== 'faculty') return false;
+  const theme = findTheme(findArtifact(student.aid).tid);
+  return theme.fid === session.scope.fid;
+}
+
+/** fields: { name, srn, rollNo, division, semester }. Returns false (and writes nothing) if the signed-in session isn't this student's own mentor. */
+function setStudentDetails(session, sid, fields) {
+  const student = DATA.students.find((s) => s.sid === Number(sid));
+  if (!student || !canEditStudent(session, student)) return false;
+  const overrides = loadStudentOverrides();
+  overrides[student.sid] = {
+    name: String(fields.name || '').trim() || student.name,
+    srn: String(fields.srn || '').trim() || student.srn,
+    rollNo: String(fields.rollNo || '').trim() || student.rollNo,
+    division: String(fields.division || '').trim() || student.division,
+    semester: Math.max(1, Math.min(8, Math.round(Number(fields.semester)) || student.semester)),
+  };
+  localStorage.setItem(STUDENT_DETAILS_KEY, JSON.stringify(overrides));
+  return true;
 }
 
 // ------------------------------------------------------------ roles & role-based access

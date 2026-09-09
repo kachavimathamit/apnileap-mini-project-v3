@@ -15,21 +15,30 @@ CREATE TABLE College (
 );
 
 -- ------------------------------------------------------------
--- School — one college has many schools.
+-- School — one college has many schools, each containing
+-- multiple departments. A school is headed by its Dean.
 -- ------------------------------------------------------------
 CREATE TABLE School (
-  Sid     SERIAL PRIMARY KEY,
-  Sname   VARCHAR(200) NOT NULL,
-  Cid     INTEGER NOT NULL REFERENCES College(Cid)
+  Sid           SERIAL PRIMARY KEY,
+  Sname         VARCHAR(200) NOT NULL,
+  School_code   VARCHAR(20),
+  Dean_name     VARCHAR(200),
+  Dean_contact  VARCHAR(200),
+  Cid           INTEGER NOT NULL REFERENCES College(Cid)
 );
 
 -- ------------------------------------------------------------
--- Dept — one school has many departments.
+-- Dept — one school has many departments. A department is
+-- headed by its HOD (Head of Department) - a distinct role from
+-- the school's Dean.
 -- ------------------------------------------------------------
 CREATE TABLE Dept (
-  Did     SERIAL PRIMARY KEY,
-  Dname   VARCHAR(200) NOT NULL,
-  Sid     INTEGER NOT NULL REFERENCES School(Sid)
+  Did          SERIAL PRIMARY KEY,
+  Dname        VARCHAR(200) NOT NULL,
+  Dept_code    VARCHAR(20),
+  HOD_name     VARCHAR(200),
+  HOD_contact  VARCHAR(200),
+  Sid          INTEGER NOT NULL REFERENCES School(Sid)
 );
 
 -- ------------------------------------------------------------

@@ -45,10 +45,11 @@
         document.getElementById('page-title').textContent = school.name;
         const depts = deptsOf(school.sid);
         document.getElementById('page-sub').textContent =
-          `${depts.length} department${depts.length === 1 ? '' : 's'}. Select one to see its faculty.`;
+          `${depts.length} department${depts.length === 1 ? '' : 's'} · Dean: ${school.deanName} (${school.code}). Select a department to see its faculty.`;
 
         document.getElementById('grid').innerHTML = depts.map((d) => cardLink(
-          `faculty.html?did=${d.did}`, d.name, `${facultyOf(d.did).length} faculty member${facultyOf(d.did).length === 1 ? '' : 's'}`,
+          `faculty.html?did=${d.did}`, d.name,
+          `${facultyOf(d.did).length} faculty member${facultyOf(d.did).length === 1 ? '' : 's'} · HOD: ${d.hodName}`,
         )).join('') || '<p class="empty">No departments recorded yet for this school.</p>';
       }
     }
