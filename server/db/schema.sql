@@ -83,7 +83,10 @@ CREATE TABLE Student (
   SRN       VARCHAR(20) NOT NULL UNIQUE,
   Roll_no   VARCHAR(10) NOT NULL,
   Division  VARCHAR(5) NOT NULL,
-  Semester  INTEGER NOT NULL,
+  -- Semester is a fixed value, not a per-student one: every student in
+  -- this programme is in semester 5, so the column defaults to it and the
+  -- CHECK rejects anything else outright.
+  Semester  INTEGER NOT NULL DEFAULT 5 CHECK (Semester = 5),
   A_id      INTEGER NOT NULL REFERENCES Artifact(A_id),
   D_id      INTEGER NOT NULL REFERENCES Dept(Did)
 );

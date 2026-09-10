@@ -413,3 +413,71 @@ a.link-card:hover h2 { color: var(--brand-dark); }
   border: 1px solid var(--line); border-radius: var(--radius);
 }
 .student-edit-row button { min-height: 1.7rem; padding: 0 0.6rem; font-size: 0.78rem; }
+/* A value the mentor can see but not change (semester is fixed for
+   everyone) - deliberately styled flat, not like an input, so it never
+   looks editable. */
+.fixed-field {
+  font-size: 0.78rem; color: var(--ink-soft);
+  padding: 0.1rem 0.4rem; border-radius: var(--radius);
+  background: var(--surface-alt); white-space: nowrap;
+}
+
+/* ============================================================ directory search page
+
+   Unlike the dashboards, this page is a data-lookup tool whose results grow
+   with whatever was found, so it is allowed to scroll — .app--scroll lifts
+   the fixed 100vh/overflow:hidden the other pages rely on. Clipping results
+   here would hide real data with no indication. */
+
+.app--scroll { height: auto; overflow: visible; }
+.app--scroll main { flex: none; }
+
+.topbar__link {
+  color: #dbe6f5; font-size: var(--fs-caption); font-weight: 600;
+  text-decoration: none; padding: 0.3rem 0.7rem; border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.08); border: 1.5px solid rgba(255, 255, 255, 0.3);
+}
+.topbar__link:hover { background: rgba(255, 255, 255, 0.18); color: #fff; }
+
+.search-card { padding: var(--sp-4); }
+.search-card h2 { font-size: var(--fs-h4); margin: 0 0 var(--sp-3); }
+
+.search-row {
+  display: flex; gap: var(--sp-3); align-items: flex-end; flex-wrap: wrap;
+  margin: 0;
+}
+.search-row label {
+  display: flex; flex-direction: column; gap: 0.25rem;
+  font-size: var(--fs-caption); font-weight: 650; color: var(--ink-soft);
+}
+.search-row select, .search-row input[type='text'] {
+  min-height: var(--tap); min-width: 14rem; padding: 0.4rem 0.6rem;
+  font: inherit; font-size: var(--fs-caption);
+  border: 1.5px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--surface); color: var(--ink);
+}
+.search-row select:disabled { background: var(--surface-alt); color: var(--ink-faint); cursor: not-allowed; }
+.search-row button { min-height: var(--tap); flex: none; }
+
+/* Field/value result tables — wide content scrolls inside its own box
+   rather than pushing the page sideways. */
+.table-wrap { overflow-x: auto; margin-top: var(--sp-3); }
+.data-table { border-collapse: collapse; width: 100%; font-size: var(--fs-caption); }
+.data-table caption {
+  text-align: left; font-weight: 650; color: var(--ink);
+  padding-bottom: 0.3rem;
+}
+.data-table th, .data-table td {
+  text-align: left; padding: 0.35rem 0.7rem;
+  border-bottom: 1px solid var(--line-soft); white-space: nowrap;
+}
+.data-table thead th {
+  background: var(--surface-alt); color: var(--ink-soft);
+  text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.7rem;
+  border-bottom: 1.5px solid var(--line);
+}
+.data-table tbody tr:hover { background: var(--surface-alt); }
+.data-table .src { font-weight: 650; color: var(--brand); }
+.data-table .fk { color: var(--ink-soft); font-style: italic; }
+
+.search-error { color: var(--red); font-size: var(--fs-caption); margin-top: var(--sp-3); font-weight: 600; }

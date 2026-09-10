@@ -68,32 +68,32 @@ const DATA = {
   // the enforce_team_size trigger in server/db/schema.sql). srn is the
   // registrar-issued identifier - unique, unlike name. Each team shares one
   // division (project teams are usually drawn from the same class section);
-  // semester is 6 throughout for the 2026-27 cohort.
+  // semester is fixed at 5 for every student (see FIXED_SEMESTER below).
   students: [
-    { sid: 1, name: 'Rohan Kulkarni', srn: '01FE22BCS001', rollNo: '01', division: 'A', semester: 6, aid: 1, did: 1 },
-    { sid: 2, name: 'Ananya Rao', srn: '01FE22BCS002', rollNo: '02', division: 'A', semester: 6, aid: 1, did: 1 },
-    { sid: 3, name: 'Vikram Iyer', srn: '01FE22BCS003', rollNo: '03', division: 'A', semester: 6, aid: 1, did: 1 },
-    { sid: 4, name: 'Meghana Bhat', srn: '01FE22BCS004', rollNo: '04', division: 'A', semester: 6, aid: 1, did: 1 },
+    { sid: 1, name: 'Rohan Kulkarni', srn: '01FE22BCS001', rollNo: '01', division: 'A', semester: 5, aid: 1, did: 1 },
+    { sid: 2, name: 'Ananya Rao', srn: '01FE22BCS002', rollNo: '02', division: 'A', semester: 5, aid: 1, did: 1 },
+    { sid: 3, name: 'Vikram Iyer', srn: '01FE22BCS003', rollNo: '03', division: 'A', semester: 5, aid: 1, did: 1 },
+    { sid: 4, name: 'Meghana Bhat', srn: '01FE22BCS004', rollNo: '04', division: 'A', semester: 5, aid: 1, did: 1 },
 
-    { sid: 5, name: 'Sneha Patil', srn: '01FE22BEC001', rollNo: '01', division: 'B', semester: 6, aid: 2, did: 2 },
-    { sid: 6, name: 'Arjun Nair', srn: '01FE22BEC002', rollNo: '02', division: 'B', semester: 6, aid: 2, did: 2 },
-    { sid: 7, name: 'Divya Kulkarni', srn: '01FE22BEC003', rollNo: '03', division: 'B', semester: 6, aid: 2, did: 2 },
-    { sid: 8, name: 'Rahul Kambli', srn: '01FE22BEC004', rollNo: '04', division: 'B', semester: 6, aid: 2, did: 2 },
+    { sid: 5, name: 'Sneha Patil', srn: '01FE22BEC001', rollNo: '01', division: 'B', semester: 5, aid: 2, did: 2 },
+    { sid: 6, name: 'Arjun Nair', srn: '01FE22BEC002', rollNo: '02', division: 'B', semester: 5, aid: 2, did: 2 },
+    { sid: 7, name: 'Divya Kulkarni', srn: '01FE22BEC003', rollNo: '03', division: 'B', semester: 5, aid: 2, did: 2 },
+    { sid: 8, name: 'Rahul Kambli', srn: '01FE22BEC004', rollNo: '04', division: 'B', semester: 5, aid: 2, did: 2 },
 
-    { sid: 9, name: 'Aditya Desai', srn: '01FE22BME001', rollNo: '01', division: 'A', semester: 6, aid: 3, did: 3 },
-    { sid: 10, name: 'Pooja Shinde', srn: '01FE22BME002', rollNo: '02', division: 'A', semester: 6, aid: 3, did: 3 },
-    { sid: 11, name: 'Nikhil Jadhav', srn: '01FE22BME003', rollNo: '03', division: 'A', semester: 6, aid: 3, did: 3 },
-    { sid: 12, name: 'Swati More', srn: '01FE22BME004', rollNo: '04', division: 'A', semester: 6, aid: 3, did: 3 },
+    { sid: 9, name: 'Aditya Desai', srn: '01FE22BME001', rollNo: '01', division: 'A', semester: 5, aid: 3, did: 3 },
+    { sid: 10, name: 'Pooja Shinde', srn: '01FE22BME002', rollNo: '02', division: 'A', semester: 5, aid: 3, did: 3 },
+    { sid: 11, name: 'Nikhil Jadhav', srn: '01FE22BME003', rollNo: '03', division: 'A', semester: 5, aid: 3, did: 3 },
+    { sid: 12, name: 'Swati More', srn: '01FE22BME004', rollNo: '04', division: 'A', semester: 5, aid: 3, did: 3 },
 
-    { sid: 13, name: 'Priya Joshi', srn: '01FE22BCV001', rollNo: '01', division: 'B', semester: 6, aid: 4, did: 4 },
-    { sid: 14, name: 'Om Deshmukh', srn: '01FE22BCV002', rollNo: '02', division: 'B', semester: 6, aid: 4, did: 4 },
-    { sid: 15, name: 'Kavya Pawar', srn: '01FE22BCV003', rollNo: '03', division: 'B', semester: 6, aid: 4, did: 4 },
-    { sid: 16, name: 'Siddharth Kale', srn: '01FE22BCV004', rollNo: '04', division: 'B', semester: 6, aid: 4, did: 4 },
+    { sid: 13, name: 'Priya Joshi', srn: '01FE22BCV001', rollNo: '01', division: 'B', semester: 5, aid: 4, did: 4 },
+    { sid: 14, name: 'Om Deshmukh', srn: '01FE22BCV002', rollNo: '02', division: 'B', semester: 5, aid: 4, did: 4 },
+    { sid: 15, name: 'Kavya Pawar', srn: '01FE22BCV003', rollNo: '03', division: 'B', semester: 5, aid: 4, did: 4 },
+    { sid: 16, name: 'Siddharth Kale', srn: '01FE22BCV004', rollNo: '04', division: 'B', semester: 5, aid: 4, did: 4 },
 
-    { sid: 17, name: 'Karan Shetty', srn: '01FE22BCA001', rollNo: '01', division: 'A', semester: 6, aid: 5, did: 5 },
-    { sid: 18, name: 'Ishita Naik', srn: '01FE22BCA002', rollNo: '02', division: 'A', semester: 6, aid: 5, did: 5 },
-    { sid: 19, name: 'Varun Hegde', srn: '01FE22BCA003', rollNo: '03', division: 'A', semester: 6, aid: 5, did: 5 },
-    { sid: 20, name: 'Riya Kamath', srn: '01FE22BCA004', rollNo: '04', division: 'A', semester: 6, aid: 5, did: 5 },
+    { sid: 17, name: 'Karan Shetty', srn: '01FE22BCA001', rollNo: '01', division: 'A', semester: 5, aid: 5, did: 5 },
+    { sid: 18, name: 'Ishita Naik', srn: '01FE22BCA002', rollNo: '02', division: 'A', semester: 5, aid: 5, did: 5 },
+    { sid: 19, name: 'Varun Hegde', srn: '01FE22BCA003', rollNo: '03', division: 'A', semester: 5, aid: 5, did: 5 },
+    { sid: 20, name: 'Riya Kamath', srn: '01FE22BCA004', rollNo: '04', division: 'A', semester: 5, aid: 5, did: 5 },
   ],
 };
 
@@ -120,6 +120,12 @@ const studentsOf = (aid) => DATA.students.filter((s) => s.aid === Number(aid)).m
 // for a real Postgres instance, by the enforce_team_size trigger in
 // server/db/schema.sql.
 const TEAM_SIZE = 4;
+
+// Semester is a fixed value, not a per-student field: every student in this
+// programme is in semester 5. Nothing in the UI offers a way to change it,
+// and setStudentDetails below always writes this value regardless of what
+// it is handed. Mirrored by the CHECK constraint in server/db/schema.sql.
+const FIXED_SEMESTER = 5;
 
 /** Every artifact under a college, walked all the way down the chain - used to roll RAG counts up to the portfolio page. */
 function artifactsUnderCollege(cid) {
@@ -208,7 +214,7 @@ function canEditStudent(session, student) {
   return theme.fid === session.scope.fid;
 }
 
-/** fields: { name, srn, rollNo, division, semester }. Returns false (and writes nothing) if the signed-in session isn't this student's own mentor. */
+/** fields: { name, srn, rollNo, division }. Semester is fixed (FIXED_SEMESTER) and never editable. Returns false (and writes nothing) if the signed-in session isn't this student's own mentor. */
 function setStudentDetails(session, sid, fields) {
   const student = DATA.students.find((s) => s.sid === Number(sid));
   if (!student || !canEditStudent(session, student)) return false;
@@ -218,7 +224,7 @@ function setStudentDetails(session, sid, fields) {
     srn: String(fields.srn || '').trim() || student.srn,
     rollNo: String(fields.rollNo || '').trim() || student.rollNo,
     division: String(fields.division || '').trim() || student.division,
-    semester: Math.max(1, Math.min(8, Math.round(Number(fields.semester)) || student.semester)),
+    semester: FIXED_SEMESTER, // fixed for everyone - never taken from the form
   };
   localStorage.setItem(STUDENT_DETAILS_KEY, JSON.stringify(overrides));
   return true;
@@ -306,6 +312,60 @@ function authorize(scope, { cid, did, fid } = {}) {
   return false;
 }
 
+// ------------------------------------------------------------ directory search (cascading campus > dept > theme, plus SRN / artefact lookup)
+//
+// Available to the five oversight roles below - a faculty mentor already
+// sees their whole (single) branch on one page, and the reviewer/stakeholder
+// roles were not asked for it. Every lookup below still runs through
+// authorize(), so search can never become a way around role scoping.
+const SEARCH_ROLES = [
+  'Platform Administrator',
+  'Global Programme Leader',
+  'Institute Administrator',
+  'Dean / Principal',
+  'Department Head',
+];
+
+function canUseSearch(session) {
+  return !!session && SEARCH_ROLES.includes(session.role);
+}
+
+/** Every dept under a college, across all of that college's schools. */
+function deptsOfCollege(cid) {
+  return schoolsOf(cid).flatMap((s) => deptsOf(s.sid));
+}
+
+/** Themes belonging to a department (Theme.D_id), regardless of which faculty owns them. */
+function themesOfDept(did) {
+  return DATA.themes.filter((t) => t.did === Number(did));
+}
+
+const findStudentBySRN = (srn) =>
+  DATA.students.find((s) => s.srn.toLowerCase() === String(srn).trim().toLowerCase());
+
+/** The full parent chain above a dept, for scope checks and for showing resolved foreign keys. */
+function chainOfDept(did) {
+  const dept = findDept(did);
+  const school = findSchool(dept.sid);
+  const college = findCollege(school.cid);
+  return { dept, school, college };
+}
+
+/** Campus (college) options a scope may search within - a dept-scoped role gets only its own campus. */
+function searchableColleges(scope) {
+  if (scope.level === 'dept') {
+    return [chainOfDept(scope.did).college];
+  }
+  return collegesInScope(scope);
+}
+
+/** Dept options within a campus that a scope may search - a dept-scoped role gets only its own dept. */
+function searchableDepts(scope, cid) {
+  const all = deptsOfCollege(cid);
+  if (scope.level === 'dept') return all.filter((d) => d.did === scope.did);
+  return all;
+}
+
 /** Dept/faculty scopes have no portfolio, school or dept list to browse - they're confined to one fixed branch. */
 function isBranchScoped(scope) {
   return scope.level === 'dept' || scope.level === 'faculty';
@@ -345,6 +405,7 @@ function renderTopbar(subtitle, session) {
         <span>${subtitle}</span>
       </div>
       <div class="topbar__who">
+        ${canUseSearch(session) ? '<a class="topbar__link" href="search.html">Search</a>' : ''}
         Signed in as <strong>${session.role}</strong>
         <button type="button" id="logout-btn" class="topbar__logout">Log out</button>
       </div>

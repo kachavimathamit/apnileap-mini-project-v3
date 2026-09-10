@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Directory search — Mini-Project Portfolio Monitoring Portal</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app app--scroll">
+    <main>
+      <nav class="breadcrumbs" id="breadcrumbs" aria-label="Breadcrumb"></nav>
+      <div class="page-head">
+        <h1>Directory search</h1>
+      </div>
+
+      <section class="card search-card" aria-label="Browse campus, department and theme">
+        <div class="search-row">
+          <label for="sel-campus">Campus
+            <select id="sel-campus"><option value="">Select campus…</option></select>
+          </label>
+          <label for="sel-dept">Department
+            <select id="sel-dept" disabled><option value="">Select campus first</option></select>
+          </label>
+          <label for="sel-theme">Theme
+            <select id="sel-theme" disabled><option value="">Select department first</option></select>
+          </label>
+        </div>
+        <div id="cascade-result"></div>
+      </section>
+
+      <section class="card search-card" aria-labelledby="srn-h">
+        <h2 id="srn-h">Student lookup by SRN</h2>
+        <form class="search-row" id="srn-form">
+          <label for="srn-input">SRN
+            <input type="text" id="srn-input" placeholder="e.g. 01FE22BCS001" autocomplete="off" />
+          </label>
+          <button type="submit" class="btn--primary">Search</button>
+        </form>
+        <div id="srn-result"></div>
+      </section>
+
+      <section class="card search-card" aria-labelledby="aid-h">
+        <h2 id="aid-h">Artefact lookup by ID</h2>
+        <form class="search-row" id="aid-form">
+          <label for="aid-input">Artefact ID (A_id)
+            <input type="text" id="aid-input" placeholder="e.g. 1" inputmode="numeric" autocomplete="off" />
+          </label>
+          <button type="submit" class="btn--primary">Search</button>
+        </form>
+        <div id="aid-result"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="data.js"></script>
+  <script>
+    const session = requireSession();
+    if (session && !canUseSearch(session)) {
+      // Search is for the oversight roles only — everyone else gets the
+      // same access-restricted screen the rest of the app uses.
+      renderTopbar('Directory search', session);
+      denyAccess(session);
+    } else if (session) {
+      renderTopbar('Directory search', session);
+      renderBreadcrumbs(document.getElementById('breadcrumbs'), [
+        { label: 'My dashboard', href: homeUrlFor(session.scope) },
+        { label: 'Directory search' },
+      ]);
+      const esc = (v) => String(v === undefined || v === null ? '—' : v)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+      /** rows: [tableName, fieldName, value, isForeignKey] */
+      function renderTable(caption, rows) {
+        return `
+          <div class="table-wrap">
+            <table class="data-table">
+              <caption>${esc(caption)}</caption>
+              <thead><tr><th>Table</th><th>Field</th><th>Value</th></tr></thead>
+              <tbody>
+                ${rows.map((r) => `
+                  <tr>
+                    <td class="src">${esc(r[0])}</td>
+                    <td class="${r[3] ? 'fk' : ''}">${esc(r[1])}</td>
+                    <td>${esc(r[2])}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      }
+
+      function renderGridTable(caption, headers, rows) {
+        return `
+          <div class="table-wrap">
+            <table class="data-table">
+              <caption>${esc(caption)}</caption>
+              <thead><tr>${headers.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+              <tbody>
+                ${rows.map((cells) => `<tr>${cells.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      }
+
+      const notAllowed = (what) =>
+        `<p class="search-error">${esc(what)} exists, but it is outside what your role (${esc(session.role)}) is authorized to view.</p>`;
+      const notFound = (what) => `<p class="search-error">${esc(what)}</p>`;
+
+      // ---------------------------------------------------- cascading selects
+      const selCampus = document.getElementById('sel-campus');
+      const selDept = document.getElementById('sel-dept');
+      const selTheme = document.getElementById('sel-theme');
+      const cascadeResult = document.getElementById('cascade-result');
+
+      searchableColleges(session.scope).forEach((c) => {
+        selCampus.insertAdjacentHTML('beforeend', `<option value="${c.cid}">${esc(c.name)}</option>`);
+      });
+
+      function resetSelect(sel, placeholder) {
+        sel.innerHTML = `<option value="">${esc(placeholder)}</option>`;
+        sel.disabled = true;
+      }
+
+      selCampus.addEventListener('change', () => {
+        cascadeResult.innerHTML = '';
+        resetSelect(selTheme, 'Select department first');
+        if (!selCampus.value) { resetSelect(selDept, 'Select campus first'); return; }
+
+        const depts = searchableDepts(session.scope, selCampus.value);
+        if (!depts.length) { resetSelect(selDept, 'No departments in scope'); return; }
+
+        selDept.innerHTML = '<option value="">Select department…</option>';
+        depts.forEach((d) => {
+          selDept.insertAdjacentHTML('beforeend',
+            `<option value="${d.did}">${esc(d.name)}${d.code ? ' (' + esc(d.code) + ')' : ''}</option>`);
+        });
+        selDept.disabled = false;
+      });
+
+      selDept.addEventListener('change', () => {
+        cascadeResult.innerHTML = '';
+        if (!selDept.value) { resetSelect(selTheme, 'Select department first'); return; }
+
+        const themes = themesOfDept(selDept.value);
+        if (!themes.length) { resetSelect(selTheme, 'No themes in this department'); return; }
+
+        selTheme.innerHTML = '<option value="">Select theme…</option>';
+        themes.forEach((t) => {
+          selTheme.insertAdjacentHTML('beforeend', `<option value="${t.tid}">${esc(t.name)}</option>`);
+        });
+        selTheme.disabled = false;
+      });
+
+      selTheme.addEventListener('change', () => {
+        if (!selTheme.value) { cascadeResult.innerHTML = ''; return; }
+        const theme = findTheme(selTheme.value);
+        const fac = findFaculty(theme.fid);
+        const chain = chainOfDept(theme.did);
+
+        if (!authorize(session.scope, { cid: chain.college.cid, did: theme.did, fid: theme.fid })) {
+          cascadeResult.innerHTML = notAllowed('That theme');
+          return;
+        }
+
+        const artifacts = artifactsOf(theme.tid);
+        cascadeResult.innerHTML =
+          renderTable('Theme ' + theme.tid + ' — ' + theme.name, [
+            ['Theme', 'T_id', theme.tid],
+            ['Theme', 'Tname', theme.name],
+            ['Theme', 'Academic_year', theme.academicYear],
+            ['Theme', 'D_id → Dept', theme.did, true],
+            ['Theme', 'F_id → Faculty', theme.fid, true],
+            ['Faculty', 'Fname', fac.name],
+            ['Dept', 'Dname', chain.dept.name],
+            ['Dept', 'Dept_code', chain.dept.code],
+            ['Dept', 'HOD_name', chain.dept.hodName],
+            ['School', 'Sname', chain.school.name],
+            ['School', 'Dean_name', chain.school.deanName],
+            ['College', 'College_name', chain.college.name],
+            ['College', 'Campus', chain.college.campus],
+          ]) +
+          renderGridTable(
+            'Artefacts under this theme (Artifact.T_id = ' + theme.tid + ')',
+            ['A_id', 'A_name', 'Status', 'Progress', 'Team size'],
+            artifacts.map((a) => {
+              const st = getArtifactStatus(a.aid);
+              return [a.aid, a.name, st.status, st.progress + '%', studentsOf(a.aid).length];
+            }),
+          );
+      });
+
+      // ---------------------------------------------------- student by SRN
+      document.getElementById('srn-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const box = document.getElementById('srn-result');
+        const raw = document.getElementById('srn-input').value.trim();
+        if (!raw) { box.innerHTML = notFound('Enter an SRN to search.'); return; }
+
+        const st = findStudentBySRN(raw);
+        if (!st) { box.innerHTML = notFound('No student found with SRN "' + raw + '".'); return; }
+
+        const artifact = findArtifact(st.aid);
+        const theme = findTheme(artifact.tid);
+        const fac = findFaculty(theme.fid);
+        const chain = chainOfDept(st.did);
+
+        if (!authorize(session.scope, { cid: chain.college.cid, did: st.did, fid: theme.fid })) {
+          box.innerHTML = notAllowed('Student ' + raw);
+          return;
+        }
+
+        box.innerHTML = renderTable('Student ' + st.srn + ' — ' + st.name, [
+          ['Student', 'S_id', st.sid],
+          ['Student', 'S_name', st.name],
+          ['Student', 'SRN', st.srn],
+          ['Student', 'Roll_no', st.rollNo],
+          ['Student', 'Division', st.division],
+          ['Student', 'Semester', st.semester],
+          ['Student', 'A_id → Artifact', st.aid, true],
+          ['Student', 'D_id → Dept', st.did, true],
+          ['Artifact', 'A_name', artifact.name],
+          ['Artifact', 'T_id → Theme', artifact.tid, true],
+          ['Theme', 'Tname', theme.name],
+          ['Theme', 'Academic_year', theme.academicYear],
+          ['Theme', 'D_id → Dept', theme.did, true],
+          ['Theme', 'F_id → Faculty', theme.fid, true],
+          ['Faculty', 'Fid', fac.fid],
+          ['Faculty', 'Fname', fac.name],
+          ['Dept', 'Did', chain.dept.did],
+          ['Dept', 'Dname', chain.dept.name],
+          ['Dept', 'Dept_code', chain.dept.code],
+          ['Dept', 'HOD_name', chain.dept.hodName],
+          ['Dept', 'HOD_contact', chain.dept.hodContact],
+          ['Dept', 'Sid → School', chain.dept.sid, true],
+          ['School', 'Sid', chain.school.sid],
+          ['School', 'Sname', chain.school.name],
+          ['School', 'School_code', chain.school.code],
+          ['School', 'Dean_name', chain.school.deanName],
+          ['School', 'Dean_contact', chain.school.deanContact],
+          ['School', 'Cid → College', chain.school.cid, true],
+          ['College', 'Cid', chain.college.cid],
+          ['College', 'College_name', chain.college.name],
+          ['College', 'Campus', chain.college.campus],
+        ]);
+      });
+
+      // ---------------------------------------------------- artefact by A_id
+      document.getElementById('aid-form').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const box = document.getElementById('aid-result');
+        const raw = document.getElementById('aid-input').value.trim();
+        if (!raw) { box.innerHTML = notFound('Enter an artefact ID to search.'); return; }
+
+        const artifact = findArtifact(raw);
+        if (!artifact) { box.innerHTML = notFound('No artefact found with A_id "' + raw + '".'); return; }
+
+        const theme = findTheme(artifact.tid);
+        const fac = findFaculty(theme.fid);
+        const chain = chainOfDept(theme.did);
+
+        if (!authorize(session.scope, { cid: chain.college.cid, did: theme.did, fid: theme.fid })) {
+          box.innerHTML = notAllowed('Artefact ' + raw);
+          return;
+        }
+
+        const status = getArtifactStatus(artifact.aid);
+        const team = studentsOf(artifact.aid);
+
+        box.innerHTML =
+          renderTable('Artefact ' + artifact.aid + ' — ' + artifact.name, [
+            ['Artifact', 'A_id', artifact.aid],
+            ['Artifact', 'A_name', artifact.name],
+            ['Artifact', 'T_id → Theme', artifact.tid, true],
+            ['Artifact', 'Status (UI field)', status.status],
+            ['Artifact', 'Progress (UI field)', status.progress + '%'],
+            ['Theme', 'T_id', theme.tid],
+            ['Theme', 'Tname', theme.name],
+            ['Theme', 'Academic_year', theme.academicYear],
+            ['Theme', 'D_id → Dept', theme.did, true],
+            ['Theme', 'F_id → Faculty', theme.fid, true],
+            ['Faculty', 'Fid', fac.fid],
+            ['Faculty', 'Fname', fac.name],
+            ['Faculty', 'Did → Dept', fac.did, true],
+            ['Dept', 'Did', chain.dept.did],
+            ['Dept', 'Dname', chain.dept.name],
+            ['Dept', 'Dept_code', chain.dept.code],
+            ['Dept', 'HOD_name', chain.dept.hodName],
+            ['Dept', 'HOD_contact', chain.dept.hodContact],
+            ['Dept', 'Sid → School', chain.dept.sid, true],
+            ['School', 'Sid', chain.school.sid],
+            ['School', 'Sname', chain.school.name],
+            ['School', 'School_code', chain.school.code],
+            ['School', 'Dean_name', chain.school.deanName],
+            ['School', 'Cid → College', chain.school.cid, true],
+            ['College', 'Cid', chain.college.cid],
+            ['College', 'College_name', chain.college.name],
+            ['College', 'Campus', chain.college.campus],
+          ]) +
+          renderGridTable(
+            'Students mapped to this artefact (Student.A_id = ' + artifact.aid + ')',
+            ['S_id', 'S_name', 'SRN', 'Roll_no', 'Division', 'Semester', 'D_id'],
+            team.map((s) => [s.sid, s.name, s.srn, s.rollNo, s.division, s.semester, s.did]),
+          );
+      });
+    }
+  </script>
+</body>
+</html>

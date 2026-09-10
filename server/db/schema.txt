@@ -55,9 +55,17 @@ TABLE: Student
   SRN       VARCHAR(20) NOT NULL UNIQUE   -- registrar-issued identifier
   Roll_no   VARCHAR(10) NOT NULL
   Division  VARCHAR(5) NOT NULL
-  Semester  INTEGER NOT NULL
+  Semester  INTEGER NOT NULL DEFAULT 5 CHECK (Semester = 5)   -- fixed at 5 for every student
   A_id      INTEGER NOT NULL -> References Artifact(A_id)
   D_id      INTEGER NOT NULL -> References Dept(Did)
+
+------------------------------------------------------------
+CONSTRAINT: Fixed semester
+------------------------------------------------------------
+Every student is in semester 5. The column defaults to 5 and a CHECK
+constraint rejects any other value, so it cannot drift per student.
+The UI shows it as read-only text - the faculty mentor's student-edit
+form deliberately offers no semester input.
 
 ------------------------------------------------------------
 CONSTRAINT: Fixed team size

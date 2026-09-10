@@ -93,7 +93,7 @@
                 <input type="text" name="srn" value="${s.srn}" aria-label="SRN" />
                 <input type="text" name="rollNo" value="${s.rollNo}" aria-label="Roll No" style="width:2.8rem" />
                 <input type="text" name="division" value="${s.division}" aria-label="Division" style="width:2.4rem" />
-                <input type="number" name="semester" value="${s.semester}" min="1" max="8" aria-label="Semester" style="width:2.8rem" />
+                <span class="fixed-field" title="Semester is fixed for every student">Sem ${s.semester}</span>
               </div>
               <div class="student-edit-row">
                 <button type="submit" class="btn--primary">Save</button>
@@ -118,7 +118,8 @@
                   srn: form.elements.srn.value,
                   rollNo: form.elements.rollNo.value,
                   division: form.elements.division.value,
-                  semester: form.elements.semester.value,
+                  // semester is deliberately not sent - it's fixed at
+                  // FIXED_SEMESTER for everyone and isn't editable here.
                 };
                 if (setStudentDetails(session, sid, fields)) {
                   const saved = form.querySelector('.status-form__saved');

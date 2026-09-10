@@ -72,29 +72,29 @@ INSERT INTO Artifact (A_name, T_id) VALUES
 -- Every team (the students on one artifact) is fixed at exactly 4 members,
 -- never more or fewer — see the enforce_team_size trigger in schema.sql.
 -- Each team shares one Division, as project teams are usually drawn from
--- the same class section; Semester 6 throughout for the 2026-27 cohort.
+-- the same class section; Semester is fixed at 5 for every student.
 INSERT INTO Student (S_name, SRN, Roll_no, Division, Semester, A_id, D_id) VALUES
-  ('Rohan Kulkarni',  '01FE22BCS001', '01', 'A', 6, 1, 1),
-  ('Ananya Rao',      '01FE22BCS002', '02', 'A', 6, 1, 1),
-  ('Vikram Iyer',     '01FE22BCS003', '03', 'A', 6, 1, 1),
-  ('Meghana Bhat',    '01FE22BCS004', '04', 'A', 6, 1, 1),
+  ('Rohan Kulkarni',  '01FE22BCS001', '01', 'A', 5, 1, 1),
+  ('Ananya Rao',      '01FE22BCS002', '02', 'A', 5, 1, 1),
+  ('Vikram Iyer',     '01FE22BCS003', '03', 'A', 5, 1, 1),
+  ('Meghana Bhat',    '01FE22BCS004', '04', 'A', 5, 1, 1),
 
-  ('Sneha Patil',     '01FE22BEC001', '01', 'B', 6, 2, 2),
-  ('Arjun Nair',      '01FE22BEC002', '02', 'B', 6, 2, 2),
-  ('Divya Kulkarni',  '01FE22BEC003', '03', 'B', 6, 2, 2),
-  ('Rahul Kambli',    '01FE22BEC004', '04', 'B', 6, 2, 2),
+  ('Sneha Patil',     '01FE22BEC001', '01', 'B', 5, 2, 2),
+  ('Arjun Nair',      '01FE22BEC002', '02', 'B', 5, 2, 2),
+  ('Divya Kulkarni',  '01FE22BEC003', '03', 'B', 5, 2, 2),
+  ('Rahul Kambli',    '01FE22BEC004', '04', 'B', 5, 2, 2),
 
-  ('Aditya Desai',    '01FE22BME001', '01', 'A', 6, 3, 3),
-  ('Pooja Shinde',    '01FE22BME002', '02', 'A', 6, 3, 3),
-  ('Nikhil Jadhav',   '01FE22BME003', '03', 'A', 6, 3, 3),
-  ('Swati More',      '01FE22BME004', '04', 'A', 6, 3, 3),
+  ('Aditya Desai',    '01FE22BME001', '01', 'A', 5, 3, 3),
+  ('Pooja Shinde',    '01FE22BME002', '02', 'A', 5, 3, 3),
+  ('Nikhil Jadhav',   '01FE22BME003', '03', 'A', 5, 3, 3),
+  ('Swati More',      '01FE22BME004', '04', 'A', 5, 3, 3),
 
-  ('Priya Joshi',     '01FE22BCV001', '01', 'B', 6, 4, 4),
-  ('Om Deshmukh',     '01FE22BCV002', '02', 'B', 6, 4, 4),
-  ('Kavya Pawar',     '01FE22BCV003', '03', 'B', 6, 4, 4),
-  ('Siddharth Kale',  '01FE22BCV004', '04', 'B', 6, 4, 4),
+  ('Priya Joshi',     '01FE22BCV001', '01', 'B', 5, 4, 4),
+  ('Om Deshmukh',     '01FE22BCV002', '02', 'B', 5, 4, 4),
+  ('Kavya Pawar',     '01FE22BCV003', '03', 'B', 5, 4, 4),
+  ('Siddharth Kale',  '01FE22BCV004', '04', 'B', 5, 4, 4),
 
-  ('Karan Shetty',    '01FE22BCA001', '01', 'A', 6, 5, 5),
-  ('Ishita Naik',     '01FE22BCA002', '02', 'A', 6, 5, 5),
-  ('Varun Hegde',     '01FE22BCA003', '03', 'A', 6, 5, 5),
-  ('Riya Kamath',     '01FE22BCA004', '04', 'A', 6, 5, 5);
+  ('Karan Shetty',    '01FE22BCA001', '01', 'A', 5, 5, 5),
+  ('Ishita Naik',     '01FE22BCA002', '02', 'A', 5, 5, 5),
+  ('Varun Hegde',     '01FE22BCA003', '03', 'A', 5, 5, 5),
+  ('Riya Kamath',     '01FE22BCA004', '04', 'A', 5, 5, 5);
