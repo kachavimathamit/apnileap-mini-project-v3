@@ -1,0 +1,264 @@
+====================================================================
+ MINI-PROJECT PORTFOLIO MONITORING PORTAL
+ CLIENT DEMO SCRIPT
+====================================================================
+Purpose : A simple, rehearsable walkthrough for showing the app to a
+          client - covers governance (org view), the core project
+          workflow (definition, theme, engines, progress, review),
+          and the intervention workflow (issue -> corrective action).
+Runtime : ~15-20 minutes if you follow it in order.
+Project used throughout : KLE-CSE-2026-DEMO
+          (already has a guide and one student on the team, and its
+          theme/definition fields are still empty - a clean, realistic
+          starting point that fills in as the demo proceeds)
+
+--------------------------------------------------------------------
+ BEFORE YOU START
+--------------------------------------------------------------------
+1. Start both servers (from the project root, two terminals):
+     cd server && npm run dev
+     cd web    && npm run dev
+2. Open the app at:  http://localhost:5173
+3. Use a private/incognito browser window per role below, OR log
+   out between roles (top-right menu -> Sign out). Logging in as a
+   new user always replaces the current session.
+
+--------------------------------------------------------------------
+ LOGIN CREDENTIALS USED IN THIS DEMO
+--------------------------------------------------------------------
+  Role                        Email                                    Password
+  Institute Administrator     institute.admin@kletech.example          InstAdmin@2026!
+  Faculty Mentor / Guide      mentor.hegde@kletech.example              Mentor@2026!
+  Reviewer / Success Coach    reviewer.coach@apnileap.example           Reviewer@2026!
+
+--------------------------------------------------------------------
+ PART 1 - THE ORGANISATION VIEW (as Institute Administrator)
+--------------------------------------------------------------------
+Login: institute.admin@kletech.example / InstAdmin@2026!
+
+1. You land on the KLE Technological University dashboard.
+   TALKING POINT: "This is the top-level view - every department,
+   every project, and a live Red/Yellow/Green health summary. An
+   administrator at the top never has to chase status updates."
+
+2. Click into "Computer Science and Engineering" department.
+   TALKING POINT: point out the per-project RAG status column and
+   the "stale project" flag (a project nobody has updated recently).
+
+3. Click into the project "Accessible lecture-capture indexing tool"
+   (KLE-CSE-2026-06) - this one is already fully populated. Open its
+   "Theme, engines & gates" tab briefly to show what a *finished*
+   project record looks like (theme confirmed, an approved engine
+   with full technical detail, a Gate 0 review already passed).
+   TALKING POINT: "This is where we're headed with the DEMO project
+   in the rest of this walkthrough."
+
+4. Go back and open the project "Real project title entered by the
+   student team" (code KLE-CSE-2026-DEMO). This is the project we
+   will build up live for the rest of the demo.
+
+--------------------------------------------------------------------
+ PART 2 - PROJECT DEFINITION (as the Faculty Mentor / Guide)
+--------------------------------------------------------------------
+Log out. Login: mentor.hegde@kletech.example / Mentor@2026!
+
+5. Open project KLE-CSE-2026-DEMO (same project as above - you are
+   its assigned guide). Go to the "Project definition" tab.
+
+6. Click "Edit project details" and enter exactly this:
+
+     Title:
+       Smart Attendance & Access Portal
+
+     Need statement:
+       Manual attendance and lab-access logging is slow, error-prone,
+       and produces no audit trail when a dispute arises.
+
+     Problem statement:
+       There is no single system that verifies who is authorised to
+       enter a lab, logs entry/exit events, and lets different staff
+       roles (faculty, lab admin, security) act only within their own
+       permissions.
+
+     Objective:
+       Build a role-based access and attendance system where every
+       action is authorised, logged, and auditable.
+
+     Learning outcomes:
+       Practical application of role-based access control, workflow
+       state machines, and relational schema design.
+
+     Foundation courses anchored:
+       Operating Systems, Database Management Systems, Web Technologies
+
+   Click Save.
+   TALKING POINT: "Every field here becomes part of the permanent,
+   dated project record - this is what a reviewer or auditor sees
+   later, not a slide deck written after the fact."
+
+--------------------------------------------------------------------
+ PART 3 - THEME & ENGINE DECOMPOSITION (still as the Guide)
+--------------------------------------------------------------------
+7. Go to the "Theme, engines & gates" tab.
+
+8. Under "Theme", choose from the dropdown:
+     Role-Based Workflow Management System
+   Click "Confirm theme".
+   TALKING POINT: "Themes come from a fixed catalog of ten proven
+   project archetypes, each mapped to the exact foundational computer
+   science courses it exercises - this isn't free-form; it's
+   structured against a real academic framework."
+
+9. Under "Engine decomposition", click "+ New engine" and enter:
+
+     Code:                E1
+     Engine name:         Access Control Engine
+     Primary course:      Operating Systems
+     Core responsibility: Owns role and permission evaluation for
+                           every access request.
+     Inputs:               Authenticated user, requested resource, action
+     Outputs:               Allow/deny decision
+     Algorithm / mechanism: Graph traversal over the role hierarchy
+                           to resolve effective permissions
+     Interface:            authorize(user, resource, action) -> ALLOW | DENY
+     KPI target:           95th-percentile authorization check under 10ms
+     Failure case:         Expired session returns 401; insufficient
+                           role returns 403
+
+   Click "Save engine".
+   TALKING POINT: "An engine is a real technical responsibility with
+   an owner, an interface, a measurable target and a named failure
+   mode - not just a checklist item. The system will not let this be
+   marked Approved until all of that is filled in."
+
+--------------------------------------------------------------------
+ PART 4 - WEEKLY CHECK-IN (still as the Guide)
+--------------------------------------------------------------------
+10. Scroll to "Weekly check-ins" and log one:
+
+      Process discipline notes:
+        Reviewed this week's commits - all dated after the design
+        document, consistent progress.
+      Git commits reviewed:
+        6 commits this week, incremental and message-bearing.
+
+    Click "Log check-in".
+    TALKING POINT: "This is the guide's lightweight, ongoing coaching
+    log - separate from the formal graded review coming up next."
+
+--------------------------------------------------------------------
+ PART 5 - PROGRESS SUBMISSION (still as the Guide, on the Progress tab)
+--------------------------------------------------------------------
+11. Go to the "Progress" tab and start a new submission:
+
+      Completion percentage:   35
+      Work completed:
+        Access Control Engine designed; role hierarchy modelled;
+        authorization interface specified.
+      Work in progress:
+        Implementing the graph-traversal permission resolver.
+      Work planned next:
+        Unit tests for the authorization decision paths.
+      Problems encountered:
+        None significant this cycle.
+      Expected completion date:  (pick any date ~4 weeks out)
+      Proposed status:           Green
+
+    Click "Submit for review" (not Save Draft).
+    TALKING POINT: "A student or guide's reported number never
+    updates the official dashboard directly - it has to be approved
+    first. That's what keeps the top-level view trustworthy."
+
+--------------------------------------------------------------------
+ PART 6 - THE FORMAL GATE REVIEW (as the Reviewer)
+--------------------------------------------------------------------
+Log out. Login: reviewer.coach@apnileap.example / Reviewer@2026!
+
+12. Open project KLE-CSE-2026-DEMO -> "Theme, engines & gates" tab.
+
+13. Under "Gate reviews", open Gate 0 - Problem Approval (5 marks).
+    Tick the box next to the student "Demo Student", then score
+    every criterion 4 out of 5, and enter:
+
+      Viva notes:  Confident, independent explanation of the problem
+                   and its stakeholders.
+      Team decision: Pass
+      Reviewer comments:
+        Problem, stakeholders and scope are clearly evidenced and
+        well explained.
+
+    Click "Record Gate 0 - Problem Approval".
+    TALKING POINT: "This mirrors a real, formal academic rubric -
+    marks are computed automatically from the ratings, per student,
+    and once a gate is passed it's locked - nobody can quietly edit
+    a graded decision after the fact."
+
+14. Point out that Gate 1 is now unlocked and Gates 2-4 remain locked
+    until Gate 1 is passed.
+    TALKING POINT: "Gates open strictly in sequence - the system
+    itself enforces the academic process, not just a policy document."
+
+--------------------------------------------------------------------
+ PART 7 - THE INTERVENTION WORKFLOW (as the Institute Administrator)
+--------------------------------------------------------------------
+Log out. Login: institute.admin@kletech.example / InstAdmin@2026!
+
+15. Open project KLE-CSE-2026-06 (the fully-populated one) so you
+    have existing data to react to. Go to "Challenges & actions" and
+    click to raise a new challenge:
+
+      Title:        Test environment access delayed
+      Description:
+        The team cannot access the shared test server; blocking
+        integration testing for this sprint.
+      Severity:      High
+      Assistance required:
+        Escalate to the department for server access.
+      Support source: Department
+
+    Save it.
+
+16. Add a corrective action against it:
+
+      Description:  Department IT to provision test-server access
+      Owner name:    Department IT Support
+      Due date:      (pick a date a few days out)
+
+    Save it.
+    TALKING POINT: "This is the escalation trail a programme office
+    actually needs - who raised it, what's blocking them, who owns
+    the fix, and by when - all timestamped, nothing lost in email."
+
+17. Change the project's status to Yellow, with a rationale, e.g.:
+      "Test environment access is currently blocking integration
+      work; team is otherwise on schedule."
+    TALKING POINT: "Every status change is permanently recorded with
+    who changed it, when, and why - this history can never be edited
+    or deleted, even by an administrator."
+
+--------------------------------------------------------------------
+ PART 8 - WRAP UP
+--------------------------------------------------------------------
+18. Return to the department dashboard to show the status change and
+    the new open challenge now reflected at the top level.
+    CLOSING LINE: "Everything you just saw - the definition, the
+    theme, the engine, the review, the challenge - is one continuous,
+    dated record. Nothing here was assembled after the fact for this
+    demo; it's the same workflow a real cohort would use all
+    semester."
+
+--------------------------------------------------------------------
+ IF SOMETHING GOES WRONG MID-DEMO
+--------------------------------------------------------------------
+- Wrong data typed in: most fields can simply be edited again and
+  re-saved (project definition, engines). Gate reviews and approved
+  status changes cannot be edited once recorded by design - if one
+  gets recorded wrong, just say so plainly ("that's actually a good
+  example of why we lock this") and move on; do not try to delete it.
+- If a page shows "Loading..." indefinitely: the backend server has
+  likely stopped - restart it (`cd server && npm run dev`) and
+  refresh the page; your data is untouched (it lives in the database
+  file, not in memory).
+====================================================================
+ END OF DEMO SCRIPT
+====================================================================

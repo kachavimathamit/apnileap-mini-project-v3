@@ -1,0 +1,22 @@
+{
+  "name": "apnileap-portfolio-portal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mini-Project Portfolio Monitoring Portal - secure multi-institute project visibility, intervention and review system",
+  "_comment": "npm's --prefix handling breaks in this checkout because the parent folder contains an unrelated package.json, so every script changes directory instead.",
+  "scripts": {
+    "install:all": "cd server && npm install && cd ../web && npm install",
+    "dev": "concurrently -n api,web -c cyan,magenta \"cd server && npm run dev\" \"cd web && npm run dev\"",
+    "seed": "cd server && npm run seed",
+    "reset": "cd server && npm run reset",
+    "test": "cd server && npm test",
+    "build": "cd web && npm run build",
+    "start": "cd server && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

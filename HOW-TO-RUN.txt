@@ -1,0 +1,160 @@
+====================================================================
+ MINI-PROJECT PORTFOLIO MONITORING PORTAL - HOW TO RUN
+====================================================================
+
+PROJECT FOLDER
+  D:\Claude Projects\ApniLeap Mini Project v2
+
+URL (once running)
+  http://localhost:5173
+
+API (used automatically by the web app - you never open this directly)
+  http://localhost:4000
+
+DEMO LOGIN
+  Password for every demo account: Passw0rd!2026
+
+  platform.admin@apnileap.example   Platform Administrator (sees everything)
+  balaji@apnileap.example           Global Programme Leader (all 5 institutes)
+  narayan@kletech.example           Dean (KLE only)
+  admin.kle@kletech.example         Institute Administrator, KLE
+  head.cse@kletech.example          Department Head, KLE CSE only
+  mentor.hegde@kletech.example      Faculty Mentor, KLE CSE
+  coach@apnileap.example            Reviewer / Success Coach, KLE + RIT
+  student.team4@kletech.example     Student (one project only)
+  trustee@apnileap.example          Read-only Stakeholder, MMCOE
+
+--------------------------------------------------------------------
+ 1. FIRST-TIME SETUP  (skip this if already set up)
+--------------------------------------------------------------------
+
+IMPORTANT: run "npm install" from INSIDE the server and web folders,
+never from the project root. The parent folder "D:\Claude Projects"
+has an unrelated package.json that breaks npm's --prefix handling.
+
+Step 1 - install the backend and create the database:
+
+    cd "D:\Claude Projects\ApniLeap Mini Project v2\server"
+    npm install
+    copy .env.example .env
+    npm run seed
+
+  (On Mac/Linux/Git Bash use: cp .env.example .env)
+
+  You should see a confirmation listing 5 institutes, 9 departments,
+  16 users and 10 projects, followed by the list of demo accounts.
+
+Step 2 - install the front end:
+
+    cd "D:\Claude Projects\ApniLeap Mini Project v2\web"
+    npm install
+
+Step 3 (optional) - confirm the backend is healthy:
+
+    cd "D:\Claude Projects\ApniLeap Mini Project v2\server"
+    npm test
+
+  Expected: 43 tests, 43 passing, 0 failing.
+
+--------------------------------------------------------------------
+ 2. RUNNING THE APP
+--------------------------------------------------------------------
+
+OPTION A - one command, both servers together (recommended):
+
+    cd "D:\Claude Projects\ApniLeap Mini Project v2"
+    npm run dev
+
+OPTION B - two separate terminals:
+
+  Terminal 1 (API):
+    cd "D:\Claude Projects\ApniLeap Mini Project v2\server"
+    npm run dev
+
+  Terminal 2 (web app):
+    cd "D:\Claude Projects\ApniLeap Mini Project v2\web"
+    npm run dev
+
+Then open a browser at:
+
+    http://localhost:5173
+
+Leave the terminal(s) open while you use the portal. Press Ctrl+C in
+a terminal to stop that server.
+
+--------------------------------------------------------------------
+ 3. EVERYDAY COMMANDS
+--------------------------------------------------------------------
+
+  npm run dev     Start the API and web app together (from project root)
+  npm test        Run the 43 backend tests (from the server folder)
+  npm run seed    Create the schema and load demo data (server folder)
+  npm run reset   Delete the local database, so it can be seeded again
+  npm run build   Build the production front end (web folder, output
+                  goes to web\dist)
+
+Resetting the demo data (discards anything you changed while exploring):
+
+    -- stop the API first (Ctrl+C) - Windows will not delete a
+    -- database file that is still open --
+    cd "D:\Claude Projects\ApniLeap Mini Project v2\server"
+    npm run reset
+    npm run seed
+
+--------------------------------------------------------------------
+ 4. TROUBLESHOOTING
+--------------------------------------------------------------------
+
+"npm install" fails with:
+  Cannot read properties of undefined (reading 'spec')
+    -> You ran it from the project root. cd into server or web first.
+
+Page loads but every action shows a network / 500 error
+    -> The API isn't running. Start it (see section 2), then check
+       http://localhost:4000/api/health - it should return "ok".
+
+"EADDRINUSE" on port 4000 or 5173
+    -> A previous run is still going. Find and stop it:
+         netstat -ano | findstr :4000
+         taskkill /PID <number> /F
+       (use :5173 for the web server)
+
+"npm run reset" fails with EBUSY: resource busy or locked
+    -> The API still has the database file open. Stop it (Ctrl+C)
+       and run the reset again.
+
+Sign-in says the email/password is incorrect for a demo account
+    -> The database hasn't been seeded yet, or was seeded with a
+       different password. Run "npm run seed" in the server folder.
+
+Sign-in keeps failing / account appears locked
+    -> The account locks itself after 5 wrong attempts. Wait 15
+       minutes, or have a platform administrator reset the password
+       from the Administration page.
+
+No password-reset or weekly-report email arrives
+    -> This is expected in development. Mail is written to the API
+       terminal window instead of being sent. To send real email,
+       set MAIL_TRANSPORT=smtp and your SMTP details in server\.env.
+
+--------------------------------------------------------------------
+ 5. WHERE THINGS ARE
+--------------------------------------------------------------------
+
+  server\src\services\accessScope.js   Roles, grants, tenant isolation
+  server\src\services\rag.js           Green/Yellow/Red rules
+  server\src\db\schema.sql             Database schema
+  server\src\db\seed.js                Demo data
+  server\test\                         Automated tests
+  web\src\pages\                       One page per screen
+  server\data\portal.db                The database file itself
+  server\.env                          Local configuration
+
+Further reading in this folder:
+  README.md                            Overview and security model
+  docs\ARCHITECTURE.md                 Why it's built this way
+  docs\REQUIREMENTS-TRACEABILITY.md    Requirements -> implementation
+  docs\API.md                          Full endpoint reference
+  docs\How-to-Run-the-Portal.docx      This same guide, as a Word doc
+
+====================================================================

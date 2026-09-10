@@ -1,0 +1,639 @@
+================================================================================
+MINI-PROJECT PORTFOLIO MONITORING PORTAL - DATABASE SCHEMA REFERENCE
+================================================================================
+Database engine : SQLite (WAL mode), accessed via better-sqlite3
+Source of truth  : server/src/db/schema.sql
+                   + incremental columns applied by server/src/db/connection.js
+                   (addColumnIfMissing, so pre-existing databases stay in sync)
+Generated        : reflects the schema as of the current build
+
+Notes on conventions used throughout every table:
+  - All primary keys are TEXT ids, generated as "<prefix>_<20-char-hex>"
+    (e.g. usr_xxxx, prj_xxxx, rvw_xxxx) - never auto-increment integers.
+  - "TEXT ... datetime('now')" columns store UTC timestamps as
+    'YYYY-MM-DD HH:MM:SS' strings.
+  - Every institute-owned row carries institute_id directly (denormalised on
+    purpose) so tenant isolation can be enforced in SQL predicates, not just
+    in the UI.
+  - "REFERENCES x(id) ON DELETE CASCADE" = child rows are removed with the
+    parent. "ON DELETE SET NULL" = the row survives, the link is cleared.
+  - Columns marked CHECK(...) enforce an enumerated set of values at the
+    database level, not just in application code.
+================================================================================
+
+
+--------------------------------------------------------------------------------
+1. users
+--------------------------------------------------------------------------------
+Purpose: one row per human account (any role). Roles/scopes live separately
+in access_grants - a user by itself has no permissions.
+
+  id                     TEXT PRIMARY KEY
+  email                  TEXT NOT NULL UNIQUE (case-insensitive)
+  password_hash          TEXT NOT NULL              bcrypt hash
+  full_name              TEXT NOT NULL
+  designation            TEXT                        e.g. "Assistant Professor, CSE"
+  is_active              INTEGER NOT NULL DEFAULT 1   0 = disabled, cannot log in
+  mfa_enabled            INTEGER NOT NULL DEFAULT 0   reserved, not yet enforced
+  must_change_password   INTEGER NOT NULL DEFAULT 0   forces password reset on next login
+  token_version          INTEGER NOT NULL DEFAULT 1   bumped to revoke all existing sessions
+  failed_login_count     INTEGER NOT NULL DEFAULT 0
+  locked_until           TEXT                        set after repeated failed logins
+  last_login_at          TEXT
+  created_at             TEXT NOT NULL DEFAULT now
+  updated_at             TEXT NOT NULL DEFAULT now
+
+
+--------------------------------------------------------------------------------
+2. password_reset_tokens
+--------------------------------------------------------------------------------
+Purpose: single-use, expiring tokens for "forgot password" flows.
+
+  id          TEXT PRIMARY KEY
+  user_id     TEXT NOT NULL -> users(id) ON DELETE CASCADE
+  token_hash  TEXT NOT NULL UNIQUE       raw token is never stored
+  expires_at  TEXT NOT NULL
+  used_at     TEXT                       set once consumed, prevents reuse
+  created_at  TEXT NOT NULL DEFAULT now
+
+Index: idx_reset_user (user_id)
+
+
+--------------------------------------------------------------------------------
+3. institutes
+--------------------------------------------------------------------------------
+Purpose: top of the hierarchy (institute -> department -> project).
+
+  id          TEXT PRIMARY KEY
+  code        TEXT NOT NULL UNIQUE       e.g. "KLE"
+  name        TEXT NOT NULL              full legal name
+  short_name  TEXT NOT NULL
+  city        TEXT
+  is_active   INTEGER NOT NULL DEFAULT 1
+  created_at  TEXT NOT NULL DEFAULT now
+
+
+--------------------------------------------------------------------------------
+4. departments
+--------------------------------------------------------------------------------
+Purpose: belongs to one institute; carries the two named leadership seats
+(head, coordinator) as direct user references for convenience lookups.
+
+  id                  TEXT PRIMARY KEY
+  institute_id        TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  code                TEXT NOT NULL              e.g. "CSE"   UNIQUE with institute_id
+  name                TEXT NOT NULL
+  head_user_id        TEXT -> users(id) ON DELETE SET NULL
+  coordinator_user_id TEXT -> users(id) ON DELETE SET NULL
+  is_active           INTEGER NOT NULL DEFAULT 1
+  created_at          TEXT NOT NULL DEFAULT now
+
+  UNIQUE (institute_id, code)
+Index: idx_departments_institute (institute_id)
+
+
+--------------------------------------------------------------------------------
+5. projects
+--------------------------------------------------------------------------------
+Purpose: the core project/team record - identity, definition, and live
+execution status all in one row.
+
+  id                          TEXT PRIMARY KEY
+  code                        TEXT NOT NULL UNIQUE       e.g. "KLE-CSE-2026-01"
+  institute_id                TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  department_id                TEXT NOT NULL -> departments(id) ON DELETE CASCADE
+  title                        TEXT NOT NULL
+  academic_year                TEXT NOT NULL              e.g. "2025-26"
+  semester                     TEXT NOT NULL
+  start_date                   TEXT
+  expected_completion_date     TEXT
+  actual_completion_date       TEXT
+
+  -- Project definition fields --
+  need_statement                TEXT
+  problem_statement             TEXT
+  objective                     TEXT
+  learning_outcomes             TEXT
+  foundation_courses            TEXT
+  functional_blocks             TEXT
+  interfaces                    TEXT
+  dependencies                  TEXT
+  expected_deliverables         TEXT
+
+  -- Execution / status --
+  rag_status                    TEXT NOT NULL DEFAULT 'GREEN'
+                                   CHECK IN ('GREEN','YELLOW','RED')
+  rag_status_since              TEXT NOT NULL DEFAULT now
+  completion_percentage         INTEGER NOT NULL DEFAULT 0   CHECK 0-100
+  last_update_at                TEXT NOT NULL DEFAULT now
+  last_review_at                TEXT
+  next_review_date              TEXT
+  is_archived                   INTEGER NOT NULL DEFAULT 0
+
+  -- Definition freeze (guide locks the definition; students can no longer edit) --
+  definition_frozen             INTEGER NOT NULL DEFAULT 0
+  frozen_by                     TEXT -> users(id) ON DELETE SET NULL
+  frozen_by_name                TEXT
+  frozen_at                     TEXT
+
+  created_by                    TEXT -> users(id) ON DELETE SET NULL
+  created_at                    TEXT NOT NULL DEFAULT now
+  updated_at                    TEXT NOT NULL DEFAULT now
+
+Indexes: idx_projects_institute (institute_id), idx_projects_department
+(department_id), idx_projects_status (rag_status)
+
+Note: the "approved" completion percentage that dashboards read comes from
+the progress_submissions workflow (table 17 below), not from students typing
+directly into this row.
+
+
+--------------------------------------------------------------------------------
+6. access_grants
+--------------------------------------------------------------------------------
+Purpose: the entire authorization model. A user holds zero or more grants;
+each grant is one role at one scope (platform-wide, one institute, one
+department, or one project). Permissions are additive across every grant a
+user holds for a given record.
+
+  id            TEXT PRIMARY KEY
+  user_id       TEXT NOT NULL -> users(id) ON DELETE CASCADE
+  role          TEXT NOT NULL CHECK IN (
+                  'PLATFORM_ADMIN', 'GLOBAL_PROGRAMME_LEADER', 'INSTITUTE_ADMIN',
+                  'DEAN', 'DEPARTMENT_HEAD', 'COORDINATOR', 'FACULTY_MENTOR',
+                  'REVIEWER', 'READ_ONLY', 'STUDENT')
+  scope_type    TEXT NOT NULL CHECK IN ('PLATFORM','INSTITUTE','DEPARTMENT','PROJECT')
+  institute_id  TEXT -> institutes(id) ON DELETE CASCADE
+  department_id TEXT -> departments(id) ON DELETE CASCADE
+  project_id    TEXT -> projects(id) ON DELETE CASCADE
+  is_active     INTEGER NOT NULL DEFAULT 1
+  granted_by    TEXT -> users(id) ON DELETE SET NULL
+  granted_at    TEXT NOT NULL DEFAULT now
+  expires_at    TEXT
+
+  CHECK: the populated scope column(s) must match scope_type exactly
+    PLATFORM   -> institute_id, department_id, project_id all NULL
+    INSTITUTE  -> institute_id set, department_id/project_id NULL
+    DEPARTMENT -> institute_id + department_id set, project_id NULL
+    PROJECT    -> institute_id + project_id set
+  (a malformed grant cannot accidentally widen access)
+
+Indexes: idx_grants_user (user_id, is_active), idx_grants_institute (institute_id)
+
+
+--------------------------------------------------------------------------------
+7. project_members
+--------------------------------------------------------------------------------
+Purpose: the team roster for a project - mentors, co-mentors, students,
+reviewers - plus the pending/approved workflow for student teams a guide
+enters.
+
+  id               TEXT PRIMARY KEY
+  project_id       TEXT NOT NULL -> projects(id) ON DELETE CASCADE
+  institute_id     TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  user_id          TEXT -> users(id) ON DELETE SET NULL     nullable: a member
+                                                              may be recorded before
+                                                              they have a login
+  member_role      TEXT NOT NULL CHECK IN ('FACULTY_MENTOR','CO_MENTOR','STUDENT','REVIEWER')
+  team_identifier  TEXT               a team ID always stored, independent of name
+  display_name     TEXT               optional - student names may be withheld
+  status           TEXT NOT NULL DEFAULT 'APPROVED' CHECK IN ('PENDING','APPROVED','REJECTED')
+  approved_by      TEXT -> users(id) ON DELETE SET NULL
+  approved_by_name TEXT
+  approved_at      TEXT
+  is_active        INTEGER NOT NULL DEFAULT 1
+  created_at       TEXT NOT NULL DEFAULT now
+
+Rule: a student team entered by a guide starts PENDING until the coordinator
+confirms it; a member added directly by staff (coordinator/admin/dept head)
+is self-approved.
+
+Indexes: idx_members_project (project_id), idx_members_user (user_id)
+
+
+--------------------------------------------------------------------------------
+8. milestones
+--------------------------------------------------------------------------------
+Purpose: planned checkpoints for a project's execution timeline.
+
+  id            TEXT PRIMARY KEY
+  project_id    TEXT NOT NULL -> projects(id) ON DELETE CASCADE
+  institute_id  TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  sequence      INTEGER NOT NULL DEFAULT 0
+  title         TEXT NOT NULL
+  description   TEXT
+  planned_date  TEXT
+  actual_date   TEXT
+  status        TEXT NOT NULL DEFAULT 'UPCOMING' CHECK IN ('UPCOMING','CURRENT','COMPLETED','MISSED')
+  is_critical   INTEGER NOT NULL DEFAULT 0
+  created_at    TEXT NOT NULL DEFAULT now
+  updated_at    TEXT NOT NULL DEFAULT now
+
+Index: idx_milestones_project (project_id)
+
+
+--------------------------------------------------------------------------------
+9. kpis
+--------------------------------------------------------------------------------
+Purpose: the metric definitions tracked for a project (target + owner).
+
+  id                  TEXT PRIMARY KEY
+  project_id          TEXT NOT NULL -> projects(id) ON DELETE CASCADE
+  institute_id        TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  name                TEXT NOT NULL
+  definition          TEXT
+  target_value        TEXT NOT NULL
+  unit                TEXT
+  accountable_user_id TEXT -> users(id) ON DELETE SET NULL
+  accountable_name    TEXT
+  created_at          TEXT NOT NULL DEFAULT now
+
+Index: idx_kpis_project (project_id)
+
+
+--------------------------------------------------------------------------------
+10. kpi_measurements
+--------------------------------------------------------------------------------
+Purpose: the actual, dated readings recorded against a KPI definition.
+
+  id                TEXT PRIMARY KEY
+  kpi_id            TEXT NOT NULL -> kpis(id) ON DELETE CASCADE
+  project_id        TEXT NOT NULL -> projects(id) ON DELETE CASCADE
+  institute_id      TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  measured_value    TEXT NOT NULL
+  measurement_date  TEXT NOT NULL
+  evidence          TEXT
+  meets_target      INTEGER NOT NULL DEFAULT 0
+  recorded_by       TEXT -> users(id) ON DELETE SET NULL
+  created_at        TEXT NOT NULL DEFAULT now
+
+Index: idx_kpi_meas_kpi (kpi_id)
+
+
+--------------------------------------------------------------------------------
+11. issues
+--------------------------------------------------------------------------------
+Purpose: problems/blockers raised against a project, with escalation and
+support tracking.
+
+  id                  TEXT PRIMARY KEY
+  project_id          TEXT NOT NULL -> projects(id) ON DELETE CASCADE
+  institute_id        TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  title               TEXT NOT NULL
+  description         TEXT NOT NULL
+  root_cause          TEXT
+  impact              TEXT
+  assistance_required TEXT
+  support_source       TEXT CHECK IN ('DEPARTMENT','INSTITUTE','INDUSTRY_PARTNER','APNILEAP','NONE')
+  severity              TEXT NOT NULL DEFAULT 'MEDIUM' CHECK IN ('LOW','MEDIUM','HIGH','CRITICAL')
+  status                 TEXT NOT NULL DEFAULT 'OPEN'
+                            CHECK IN ('OPEN','IN_PROGRESS','RESOLVED','VERIFIED','CLOSED')
+  escalation_level        TEXT NOT NULL DEFAULT 'NONE'
+                            CHECK IN ('NONE','DEPARTMENT','INSTITUTE','PROGRAMME','INDUSTRY')
+  evidence                TEXT
+  raised_by                TEXT -> users(id) ON DELETE SET NULL
+  raised_by_role            TEXT
+  verified_by                TEXT -> users(id) ON DELETE SET NULL
+  opened_at                  TEXT NOT NULL DEFAULT now
+  resolved_at                TEXT
+  closed_at                  TEXT
+  updated_at                  TEXT NOT NULL DEFAULT now
+
+Index: idx_issues_project (project_id, status)
+
+
+--------------------------------------------------------------------------------
+12. corrective_actions
+--------------------------------------------------------------------------------
+Purpose: remediation tasks, optionally linked to an issue, with an owner and
+a due date.
+
+  id                       TEXT PRIMARY KEY
+  project_id               TEXT NOT NULL -> projects(id) ON DELETE CASCADE
+  institute_id              TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  issue_id                   TEXT -> issues(id) ON DELETE SET NULL
+  description                 TEXT NOT NULL
+  owner_user_id                TEXT -> users(id) ON DELETE SET NULL
+  owner_name                     TEXT
+  escalation_owner_user_id        TEXT -> users(id) ON DELETE SET NULL
+  due_date                          TEXT NOT NULL
+  status                             TEXT NOT NULL DEFAULT 'OPEN'
+                                        CHECK IN ('OPEN','IN_PROGRESS','COMPLETED','VERIFIED','CANCELLED')
+  completed_at                        TEXT
+  verified_by                          TEXT -> users(id) ON DELETE SET NULL
+  evidence                              TEXT
+  created_by                             TEXT -> users(id) ON DELETE SET NULL
+  created_at                              TEXT NOT NULL DEFAULT now
+  updated_at                               TEXT NOT NULL DEFAULT now
+
+Indexes: idx_actions_project (project_id, status), idx_actions_due (due_date, status)
+
+
+--------------------------------------------------------------------------------
+13. reviews
+--------------------------------------------------------------------------------
+Purpose: a formal review event/decision recorded against a project, optionally
+scored against a rubric.
+
+  id                          TEXT PRIMARY KEY
+  project_id                  TEXT NOT NULL -> projects(id) ON DELETE CASCADE
+  institute_id                 TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  reviewer_user_id              TEXT -> users(id) ON DELETE SET NULL
+  reviewer_name                  TEXT NOT NULL
+  review_date                     TEXT NOT NULL DEFAULT now
+  previous_status                  TEXT
+  recommended_status                TEXT CHECK IN ('GREEN','YELLOW','RED')
+  decision                           TEXT NOT NULL
+                                        CHECK IN ('APPROVED','CHANGES_REQUESTED','EVIDENCE_REQUESTED','ESCALATED','NOTED')
+  comments                            TEXT NOT NULL
+  corrective_action_summary            TEXT
+  next_review_date                      TEXT
+  rubric_id                              TEXT -> review_rubrics(id) ON DELETE SET NULL   [added post-launch]
+  review_number                           INTEGER                                          [added post-launch]
+  scores                                   TEXT   JSON object {criterionName: awardedMarks} [added post-launch]
+  created_at                                TEXT NOT NULL DEFAULT now
+
+Index: idx_reviews_project (project_id)
+
+Note: rubric_id / review_number / scores were added after the table first
+shipped, via connection.js's addColumnIfMissing - present on every database
+regardless of when it was created.
+
+
+--------------------------------------------------------------------------------
+14. review_rubrics
+--------------------------------------------------------------------------------
+Purpose: a mentor defines one scoring rubric once, then applies it identically
+across every team (project) they guide, so every team is judged the same way.
+
+  id                TEXT PRIMARY KEY
+  institute_id      TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  created_by        TEXT -> users(id) ON DELETE SET NULL
+  created_by_name   TEXT NOT NULL
+  title             TEXT NOT NULL
+  description       TEXT
+  criteria          TEXT NOT NULL   JSON array of { name, maxMarks, description }
+  is_active         INTEGER NOT NULL DEFAULT 1
+  created_at        TEXT NOT NULL DEFAULT now
+
+Index: idx_rubrics_creator (created_by)
+
+
+--------------------------------------------------------------------------------
+15. scheduled_reviews
+--------------------------------------------------------------------------------
+Purpose: the "Review 1 / Review 2 / Review 3 ..." slots a mentor bulk-generates
+for every team they guide, from one rubric. Each slot is later filled in (via
+the /conduct endpoint) into a real reviews row, using the exact same
+rubric_id + review_number, so the rubric can never drift between generation
+and the actual review.
+
+  id            TEXT PRIMARY KEY
+  project_id    TEXT NOT NULL -> projects(id) ON DELETE CASCADE
+  institute_id  TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  rubric_id     TEXT NOT NULL -> review_rubrics(id) ON DELETE CASCADE
+  review_number INTEGER NOT NULL
+  title         TEXT NOT NULL
+  planned_date  TEXT
+  status        TEXT NOT NULL DEFAULT 'PLANNED' CHECK IN ('PLANNED','COMPLETED')
+  review_id     TEXT -> reviews(id) ON DELETE SET NULL   set once conducted
+  created_by    TEXT -> users(id) ON DELETE SET NULL
+  created_at    TEXT NOT NULL DEFAULT now
+
+  UNIQUE (project_id, rubric_id, review_number)
+Indexes: idx_scheduled_reviews_project (project_id), idx_scheduled_reviews_rubric (rubric_id)
+
+
+--------------------------------------------------------------------------------
+16. status_history
+--------------------------------------------------------------------------------
+Purpose: append-only audit trail of every RAG status change. APPEND-ONLY BY
+DATABASE TRIGGER, not just app discipline.
+
+  id                TEXT PRIMARY KEY
+  project_id        TEXT NOT NULL -> projects(id) ON DELETE CASCADE
+  institute_id      TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  previous_status   TEXT
+  new_status        TEXT NOT NULL CHECK IN ('GREEN','YELLOW','RED')
+  changed_by        TEXT -> users(id) ON DELETE SET NULL
+  changed_by_name   TEXT NOT NULL
+  changed_at        TEXT NOT NULL DEFAULT now
+  rationale         TEXT NOT NULL
+  evidence          TEXT
+  approved_by       TEXT -> users(id) ON DELETE SET NULL
+  approved_by_name  TEXT
+  review_id         TEXT -> reviews(id) ON DELETE SET NULL
+
+Index: idx_history_project (project_id, changed_at)
+
+Triggers:
+  status_history_no_update  - blocks any UPDATE except the one narrow case of
+                               changed_by/approved_by being nulled out when the
+                               referenced user account is deleted.
+  status_history_no_delete  - blocks DELETE outright while the parent project
+                               still exists.
+
+
+--------------------------------------------------------------------------------
+17. progress_submissions
+--------------------------------------------------------------------------------
+Purpose: the draft -> submit -> review -> approve workflow for reported
+progress. A student's or mentor's completion percentage/narrative is never
+written straight onto the project - it lands here first, and only an
+APPROVED decision is meant to feed the number dashboards actually read.
+Once decided, a submission is immutable (append-only record of what was
+actually reviewed).
+
+  id                        TEXT PRIMARY KEY
+  project_id                TEXT NOT NULL -> projects(id) ON DELETE CASCADE
+  institute_id               TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  version                     INTEGER NOT NULL      increasing per-project submission number
+
+  completion_percentage        INTEGER NOT NULL CHECK 0-100
+  work_completed                 TEXT
+  work_in_progress                 TEXT
+  work_planned_next                  TEXT
+  problems_encountered                 TEXT
+  support_required                       TEXT
+  expected_completion_date                 TEXT
+  student_remarks                            TEXT
+  proposed_rag_status                          TEXT CHECK IN ('GREEN','YELLOW','RED')
+  evidence                                      TEXT
+
+  status                                         TEXT NOT NULL DEFAULT 'DRAFT'
+                                                    CHECK IN ('DRAFT','PENDING_REVIEW','UNDER_REVIEW',
+                                                              'APPROVED','REJECTED','CHANGES_REQUESTED')
+
+  submitted_by                                    TEXT -> users(id) ON DELETE SET NULL
+  submitted_by_name                                TEXT
+  submitted_at                                      TEXT
+
+  reviewed_by                                        TEXT -> users(id) ON DELETE SET NULL
+  reviewed_by_name                                    TEXT
+  review_comment                                       TEXT
+  reviewed_at                                           TEXT
+
+  created_at                                             TEXT NOT NULL DEFAULT now
+  updated_at                                              TEXT NOT NULL DEFAULT now
+
+Indexes: idx_progress_project (project_id, version), idx_progress_status (status)
+
+Triggers:
+  progress_submission_decided_immutable - once status is APPROVED or REJECTED
+     and stays that same status, no further UPDATE is allowed. A disagreeing
+     student files a NEW submission rather than rewriting a decided one.
+  progress_submission_decided_no_delete - a submission cannot be deleted once
+     it has reached PENDING_REVIEW, UNDER_REVIEW, APPROVED or REJECTED - only
+     a DRAFT (or CHANGES_REQUESTED, i.e. sent back for another try) may be
+     removed.
+
+
+--------------------------------------------------------------------------------
+18. role_requests
+--------------------------------------------------------------------------------
+Purpose: self-registration approval queue. A Faculty Mentor / Guide can
+create an account and sign in immediately, but it holds no access_grants row
+(and therefore sees nothing) until a Department Head, Institute Administrator
+or Platform Administrator approves the request - approval is what actually
+creates the grant.
+
+  id                TEXT PRIMARY KEY
+  user_id           TEXT NOT NULL -> users(id) ON DELETE CASCADE
+  requested_role    TEXT NOT NULL CHECK IN ('FACULTY_MENTOR')
+  institute_id      TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  department_id     TEXT NOT NULL -> departments(id) ON DELETE CASCADE
+  designation       TEXT
+  status            TEXT NOT NULL DEFAULT 'PENDING' CHECK IN ('PENDING','APPROVED','REJECTED')
+  reviewed_by       TEXT -> users(id) ON DELETE SET NULL
+  reviewed_by_name  TEXT
+  review_comment    TEXT
+  reviewed_at       TEXT
+  created_at        TEXT NOT NULL DEFAULT now
+
+Indexes: idx_role_requests_status (status), idx_role_requests_department (department_id)
+
+
+--------------------------------------------------------------------------------
+19. repository_links
+--------------------------------------------------------------------------------
+Purpose: pointers to a project's source-code repository (the repo itself
+lives in Git/GitHub, not in this database).
+
+  id           TEXT PRIMARY KEY
+  project_id   TEXT NOT NULL -> projects(id) ON DELETE CASCADE
+  institute_id TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  provider     TEXT NOT NULL DEFAULT 'GITHUB'
+  label        TEXT NOT NULL
+  repo_url     TEXT NOT NULL
+  visibility   TEXT NOT NULL DEFAULT 'PRIVATE' CHECK IN ('PRIVATE','INTERNAL')
+  added_by     TEXT -> users(id) ON DELETE SET NULL
+  created_at   TEXT NOT NULL DEFAULT now
+
+Index: idx_repos_project (project_id)
+
+
+--------------------------------------------------------------------------------
+20. attachments
+--------------------------------------------------------------------------------
+Purpose: pointers to large files (report, presentation, image, recording) held
+in object storage or an external URL - not stored as blobs in this database.
+
+  id           TEXT PRIMARY KEY
+  project_id   TEXT NOT NULL -> projects(id) ON DELETE CASCADE
+  institute_id TEXT NOT NULL -> institutes(id) ON DELETE CASCADE
+  kind         TEXT NOT NULL DEFAULT 'OTHER' CHECK IN ('REPORT','PRESENTATION','IMAGE','RECORDING','OTHER')
+  label        TEXT NOT NULL
+  storage_key  TEXT               object-storage key, if stored there
+  external_url TEXT               or an external URL instead
+  content_type TEXT
+  size_bytes   INTEGER
+  uploaded_by  TEXT -> users(id) ON DELETE SET NULL
+  created_at   TEXT NOT NULL DEFAULT now
+
+Index: idx_attachments_project (project_id)
+
+
+--------------------------------------------------------------------------------
+21. notifications
+--------------------------------------------------------------------------------
+Purpose: in-app / email notification queue per user.
+
+  id           TEXT PRIMARY KEY
+  user_id      TEXT NOT NULL -> users(id) ON DELETE CASCADE
+  institute_id TEXT -> institutes(id) ON DELETE CASCADE
+  project_id   TEXT -> projects(id) ON DELETE CASCADE
+  event_type   TEXT NOT NULL
+  title        TEXT NOT NULL
+  body         TEXT NOT NULL
+  channel      TEXT NOT NULL DEFAULT 'IN_APP' CHECK IN ('IN_APP','EMAIL')
+  is_read      INTEGER NOT NULL DEFAULT 0
+  created_at   TEXT NOT NULL DEFAULT now
+  delivered_at TEXT
+
+Index: idx_notifications_user (user_id, is_read)
+
+
+--------------------------------------------------------------------------------
+22. audit_log
+--------------------------------------------------------------------------------
+Purpose: system-wide, append-only security/action audit trail (who did what,
+when, from where, and whether it succeeded or was denied). APPEND-ONLY BY
+DATABASE TRIGGER.
+
+  id            TEXT PRIMARY KEY
+  occurred_at   TEXT NOT NULL DEFAULT now
+  actor_user_id TEXT -> users(id) ON DELETE SET NULL
+  actor_email   TEXT               kept redundantly so the entry stays
+                                    readable even after the account is deleted
+  action        TEXT NOT NULL
+  entity_type   TEXT
+  entity_id     TEXT
+  institute_id  TEXT
+  outcome       TEXT NOT NULL DEFAULT 'SUCCESS' CHECK IN ('SUCCESS','DENIED','FAILURE')
+  ip_address    TEXT
+  user_agent    TEXT
+  detail        TEXT
+
+Indexes: idx_audit_time (occurred_at), idx_audit_actor (actor_user_id),
+idx_audit_action (action, outcome)
+
+Triggers:
+  audit_log_no_update - blocks any UPDATE except actor_user_id being nulled
+                         out when the referenced account is deleted.
+  audit_log_no_delete - blocks DELETE entirely, unconditionally.
+
+
+================================================================================
+RELATIONSHIP SUMMARY (parent -> children)
+================================================================================
+institutes
+  -> departments
+  -> projects
+  -> access_grants (institute-scoped)
+  -> project_members / milestones / kpis / issues / corrective_actions /
+     reviews / review_rubrics / scheduled_reviews / status_history /
+     progress_submissions / role_requests / repository_links / attachments
+     (all carry institute_id)
+
+departments
+  -> projects
+  -> role_requests
+
+projects (the central hub)
+  -> project_members, milestones, kpis, issues, corrective_actions,
+     reviews, scheduled_reviews, status_history, progress_submissions,
+     repository_links, attachments, notifications
+  -> access_grants (project-scoped)
+
+users
+  -> access_grants, project_members, role_requests, notifications,
+     password_reset_tokens
+  -> referenced (nullable, ON DELETE SET NULL) as an actor/owner column on
+     nearly every other table (created_by, raised_by, reviewed_by,
+     approved_by, verified_by, actor_user_id, etc.)
+
+kpis -> kpi_measurements
+issues -> corrective_actions (optional link)
+review_rubrics -> scheduled_reviews -> reviews (once conducted)
+
+================================================================================

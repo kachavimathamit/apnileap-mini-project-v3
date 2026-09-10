@@ -1,0 +1,1154 @@
+====================================================================
+ MINI-PROJECT PORTFOLIO MONITORING PORTAL
+ DATABASE DESIGN
+====================================================================
+Engine    : SQLite (better-sqlite3), WAL journal mode, foreign_keys=ON
+Schema    : server/src/db/schema.sql
+Migration : server/src/db/connection.js -> migrate()
+              1. runs schema.sql (every statement is CREATE TABLE/INDEX/
+                 TRIGGER IF NOT EXISTS, so it is safe to call on every
+                 server start)
+              2. addColumnIfMissing() adds any column that shipped after
+                 a table already existed on disk - CREATE TABLE IF NOT
+                 EXISTS cannot retrofit a column onto an existing table,
+                 so this keeps older databases in step with schema.sql
+                 without a destructive reset
+Portability: no SQLite-only types are used beyond datetime()/julianday()
+             helper functions, so the schema moves to PostgreSQL with
+             near-mechanical changes if the deployment ever needs
+             multi-node write concurrency.
+
+Snapshot taken from the live database at time of writing:
+  21 tables, 30 indexes, 6 triggers
+  5 institutes, 9 departments, 3 projects, 11 users, 15 access grants
+  235 audit log entries
+
+  NOTE ON SECTION 9 (page bottom): the "Foundation Integration" extension
+  (project themes, engines, gate model, sprints, COE calendar) IS
+  implemented in schema.sql and connection.js, as of the v2 correction
+  described in Section 9's own header. It is documented separately from
+  the rest of this file only because it is a distinct, later-added
+  subsystem with its own source-of-truth documents (a faculty handbook),
+  not because it is speculative.
+
+--------------------------------------------------------------------
+ DESIGN PRINCIPLES
+--------------------------------------------------------------------
+
+1. TENANT ISOLATION IS A COLUMN, NOT A CONVENTION
+   Every institute-owned row - down to individual milestones, issues,
+   KPI measurements - carries its own institute_id, even though it
+   could technically be derived by joining through project_id. This
+   is deliberate redundancy: it lets every scoped query filter
+   directly on institute_id without a join, and it means a bug in one
+   join path can never silently widen access to another institute's
+   data. See docs/ARCHITECTURE.md section 4 for how this column is
+   turned into an enforced SQL predicate on every request.
+
+2. ROLES ARE GRANTED, NEVER ASSUMED
+   access_grants is the single source of truth for "who can do what,
+   where." A role by itself means nothing until it is paired with a
+   scope (PLATFORM / INSTITUTE / DEPARTMENT / PROJECT) in a grant row.
+   A CHECK constraint enforces that the scope columns actually match
+   the declared scope_type, so a malformed grant cannot widen access
+   by accident.
+
+3. HISTORY TABLES ARE APPEND-ONLY AT THE DATABASE LAYER
+   status_history and audit_log both carry BEFORE UPDATE / BEFORE
+   DELETE triggers that abort the statement outright. This is
+   enforced by SQLite itself, not by application code choosing not to
+   call UPDATE - a bug, a bad migration, or a future developer cannot
+   silently rewrite what happened.
+
+4. DECIDED RECORDS BECOME IMMUTABLE
+   progress_submissions follows the same idea one level down: once a
+   submission is APPROVED or REJECTED it can no longer be edited or
+   deleted (enforced by trigger). A student who disagrees files a new
+   version; nobody edits history to make an old submission look
+   different in hindsight.
+
+5. SOFT DATA, HARD RULES
+   Free-text fields (comments, rationale, descriptions) stay TEXT with
+   no schema-level structure, because the requirements value the
+   detail a reviewer or mentor actually writes over rigid
+   categorisation. Everything that matters for a decision - RAG
+   status, issue severity, review decision, escalation level - is a
+   CHECK-constrained enum instead, so a workflow query never has to
+   guard against a typo'd status value.
+
+--------------------------------------------------------------------
+ ENTITY GROUPS
+--------------------------------------------------------------------
+
+  IDENTITY            users, password_reset_tokens
+
+  HIERARCHY            institutes -> departments -> projects
+
+  AUTHORIZATION        access_grants, role_requests
+
+  PROJECT TEAM          project_members
+
+  EXECUTION DETAIL      milestones, kpis, kpi_measurements
+
+  INTERVENTION          issues, corrective_actions
+
+  REVIEW & HISTORY      reviews, review_rubrics, scheduled_reviews,
+                        status_history
+
+  PROGRESS WORKFLOW     progress_submissions
+
+  ARTEFACTS            repository_links, attachments
+
+  OPERATIONS            notifications, audit_log
+
+  THEME CATALOG          project_themes
+
+  ENGINE DECOMPOSITION   project_engines, project_engine_dependencies
+
+  GATE MODEL             gates, stage_definitions, stage_gate_map, sprints,
+                        calendar_weeks, gate_rubric_criteria,
+                        project_gate_reviews, project_gate_review_scores,
+                        project_gate_evidence, project_weekly_checkins
+
+--------------------------------------------------------------------
+ HIERARCHY AND KEY RELATIONSHIPS (simplified)
+--------------------------------------------------------------------
+
+  institutes
+     |
+     +--< departments  (UNIQUE institute_id+code)
+     |       |
+     |       +--< projects  (UNIQUE code globally)
+     |               |
+     |               +--< project_members -----> users (nullable)
+     |               +--< milestones
+     |               +--< kpis --< kpi_measurements
+     |               +--< issues --< corrective_actions
+     |               +--< reviews -----> review_rubrics (nullable)
+     |               +--< scheduled_reviews -> review_rubrics, reviews
+     |               +--< status_history ------> reviews (nullable)
+     |               +--< progress_submissions
+     |               +--< repository_links
+     |               +--< attachments
+     |               |
+     |               |  -- unlocked once a FACULTY_MENTOR project_member
+     |               |     row is APPROVED, see Section 9.0 --
+     |               +--o theme_id -----------> project_themes (nullable)
+     |               +--< project_engines --< project_engine_dependencies
+     |               +--< project_gate_reviews --< project_gate_review_scores
+     |               |                        \-< project_gate_evidence
+     |               +--< project_weekly_checkins
+     |
+     +--< access_grants  (scope_type decides which of institute_id /
+     |                     department_id / project_id is populated)
+     +--< role_requests
+
+  users
+     +--< access_grants, role_requests, project_members,
+          progress_submissions, reviews, notifications, audit_log
+          (most user references are ON DELETE SET NULL, so deleting
+          an account never breaks a historical record - the *_name
+          columns keep the human-readable trail intact regardless)
+
+  ON DELETE behaviour, by relationship type:
+    institute -> department -> project  : CASCADE (deleting the
+      parent removes everything under it - guarded in the API layer
+      by requiring the child collection to be empty first; see
+      docs/ARCHITECTURE.md section 5.3)
+    project -> its detail tables         : CASCADE
+    *_user_id / *_by references to users : SET NULL (preserve the
+      record, lose only the live link back to the account)
+
+--------------------------------------------------------------------
+ TABLE REFERENCE
+--------------------------------------------------------------------
+
+------------------------------------------------------------ users --
+  id                    TEXT PK
+  email                 TEXT UNIQUE (case-insensitive)
+  password_hash         TEXT        bcrypt, cost 12
+  full_name             TEXT
+  designation           TEXT        nullable
+  is_active             INTEGER     0/1 - deactivation is immediate
+                                     (checked on every request via
+                                     token_version, not just at login)
+  mfa_enabled           INTEGER     reserved, not yet wired up
+  must_change_password  INTEGER     forces a password change before
+                                     any other route is reachable
+  token_version         INTEGER     bumped to invalidate every
+                                     outstanding session at once
+                                     (password change, deactivation)
+  failed_login_count    INTEGER     account lockout counter
+  locked_until           TEXT       temporary lockout expiry
+  last_login_at          TEXT
+  created_at / updated_at TEXT
+
+------------------------------------- password_reset_tokens --
+  id            TEXT PK
+  user_id       TEXT -> users        CASCADE
+  token_hash    TEXT UNIQUE          the raw token is never stored
+  expires_at    TEXT                 one hour from issue
+  used_at       TEXT                 nullable; set once, then dead
+  created_at    TEXT
+
+-------------------------------------------------------- institutes --
+  id            TEXT PK
+  code          TEXT UNIQUE          e.g. "KLE"
+  name          TEXT                 full legal name
+  short_name    TEXT                 display name
+  city          TEXT                 nullable
+  is_active     INTEGER              deactivated, not deleted, once
+                                     it owns any department
+  created_at    TEXT
+
+------------------------------------------------------- departments --
+  id                    TEXT PK
+  institute_id          TEXT -> institutes   CASCADE
+  code                  TEXT                 UNIQUE with institute_id
+  name                  TEXT
+  head_user_id          TEXT -> users        SET NULL, nullable
+  coordinator_user_id   TEXT -> users        SET NULL, nullable
+  is_active             INTEGER
+  created_at            TEXT
+
+---------------------------------------------------------- projects --
+  id                          TEXT PK
+  code                        TEXT UNIQUE      e.g. "KLE-CSE-2026-05"
+  institute_id                TEXT -> institutes    CASCADE
+  department_id                TEXT -> departments   CASCADE
+  title                        TEXT
+  academic_year, semester      TEXT
+  start_date                   TEXT             nullable
+  expected_completion_date     TEXT             nullable
+  actual_completion_date       TEXT             nullable
+
+  -- project definition (theme/title and the fields a student enters
+     before the guide freezes them) --
+  need_statement                TEXT
+  problem_statement             TEXT
+  objective                     TEXT
+  learning_outcomes             TEXT
+  foundation_courses            TEXT
+  functional_blocks             TEXT
+  interfaces                    TEXT
+  dependencies                  TEXT
+  expected_deliverables         TEXT
+
+  -- execution --
+  rag_status                    TEXT   CHECK GREEN/YELLOW/RED
+  rag_status_since              TEXT   set on every status change
+  completion_percentage         INTEGER  CHECK 0-100; only ever
+                                        written by a direct staff
+                                        edit or an APPROVED progress
+                                        submission - never a raw
+                                        student entry
+  last_update_at                TEXT
+  last_review_at                TEXT   nullable
+  next_review_date              TEXT   nullable
+  is_archived                   INTEGER
+
+  -- definition freeze --
+  definition_frozen             INTEGER  0/1
+  frozen_by / frozen_by_name    TEXT     nullable
+  frozen_at                     TEXT     nullable
+
+  created_by                    TEXT -> users   SET NULL
+  created_at / updated_at        TEXT
+
+----------------------------------------------------- access_grants --
+  id             TEXT PK
+  user_id        TEXT -> users        CASCADE
+  role           TEXT   CHECK IN (PLATFORM_ADMIN, GLOBAL_PROGRAMME_
+                        LEADER, INSTITUTE_ADMIN, DEAN, DEPARTMENT_HEAD,
+                        COORDINATOR, FACULTY_MENTOR, REVIEWER,
+                        READ_ONLY, STUDENT)
+  scope_type     TEXT   CHECK IN (PLATFORM, INSTITUTE, DEPARTMENT,
+                        PROJECT)
+  institute_id   TEXT -> institutes   CASCADE, nullable
+  department_id  TEXT -> departments  CASCADE, nullable
+  project_id     TEXT -> projects     CASCADE, nullable
+  is_active      INTEGER
+  granted_by     TEXT -> users        SET NULL
+  granted_at     TEXT
+  expires_at     TEXT   nullable
+
+  TABLE CHECK: the populated scope column(s) must match scope_type -
+  e.g. a DEPARTMENT-scoped grant MUST have both institute_id and
+  department_id set and project_id NULL. This is what stops a grant
+  from ever being ambiguous about what it covers.
+
+----------------------------------------------------- role_requests --
+  id                TEXT PK
+  user_id           TEXT -> users         CASCADE
+  requested_role    TEXT   CHECK IN (FACULTY_MENTOR)  -- the only
+                          role that currently self-registers
+  institute_id      TEXT -> institutes    CASCADE
+  department_id     TEXT -> departments   CASCADE
+  designation       TEXT   nullable
+  status            TEXT   CHECK IN (PENDING, APPROVED, REJECTED)
+  reviewed_by / reviewed_by_name  TEXT    nullable
+  review_comment    TEXT   nullable, required by the API when rejecting
+  reviewed_at       TEXT   nullable
+  created_at        TEXT
+
+  The applicant's user row is created immediately on registration but
+  starts with NO access_grants row - approval is what inserts one.
+
+--------------------------------------------------- project_members --
+  id                TEXT PK
+  project_id        TEXT -> projects     CASCADE
+  institute_id      TEXT -> institutes   CASCADE
+  user_id           TEXT -> users        SET NULL, nullable (a
+                          guide-entered placeholder team may have no
+                          linked login at all)
+  member_role       TEXT   CHECK IN (FACULTY_MENTOR, CO_MENTOR,
+                          STUDENT, REVIEWER)
+  team_identifier   TEXT   nullable - always present for a student
+                          row even when display_name is withheld
+  display_name      TEXT   nullable (stakeholder decision: student
+                          names may be withheld; the identifier is
+                          the durable reference)
+  status            TEXT   CHECK IN (PENDING, APPROVED, REJECTED)
+  approved_by / approved_by_name / approved_at   nullable
+  is_active         INTEGER
+  created_at        TEXT
+
+------------------------------------------------------- milestones --
+  id, project_id, institute_id  (as above)
+  sequence      INTEGER          display order
+  title         TEXT
+  description   TEXT   nullable
+  planned_date  TEXT   nullable
+  actual_date   TEXT   nullable
+  status        TEXT   CHECK IN (UPCOMING, CURRENT, COMPLETED, MISSED)
+  is_critical   INTEGER          a missed critical milestone is one
+                                 of the stated triggers for Red
+  created_at / updated_at
+
+--------------------------------------------------------------- kpis --
+  id, project_id, institute_id
+  name                  TEXT
+  definition            TEXT   nullable - how it is measured
+  target_value          TEXT
+  unit                  TEXT   nullable
+  accountable_user_id   TEXT -> users   SET NULL, nullable
+  accountable_name      TEXT   nullable
+  created_at
+
+--------------------------------------------------- kpi_measurements --
+  id, kpi_id -> kpis (CASCADE), project_id, institute_id
+  measured_value    TEXT
+  measurement_date  TEXT
+  evidence          TEXT   nullable
+  meets_target      INTEGER   0/1
+  recorded_by       TEXT -> users   SET NULL, nullable
+  created_at
+
+------------------------------------------------------------- issues --
+  id, project_id, institute_id
+  title, description             TEXT (description required)
+  root_cause, impact             TEXT   nullable
+  assistance_required            TEXT   nullable
+  support_source     TEXT   CHECK IN (DEPARTMENT, INSTITUTE,
+                          INDUSTRY_PARTNER, APNILEAP, NONE)
+  severity           TEXT   CHECK IN (LOW, MEDIUM, HIGH, CRITICAL)
+  status             TEXT   CHECK IN (OPEN, IN_PROGRESS, RESOLVED,
+                          VERIFIED, CLOSED)
+  escalation_level   TEXT   CHECK IN (NONE, DEPARTMENT, INSTITUTE,
+                          PROGRAMME, INDUSTRY)
+  evidence           TEXT   nullable - required by the API before a
+                          status of RESOLVED/VERIFIED/CLOSED
+  raised_by          TEXT -> users   SET NULL, nullable
+  raised_by_role     TEXT   nullable
+  verified_by        TEXT -> users   SET NULL, nullable
+  opened_at, resolved_at, closed_at, updated_at
+
+--------------------------------------------------- corrective_actions --
+  id, project_id, institute_id
+  issue_id                   TEXT -> issues   SET NULL, nullable
+  description                TEXT
+  owner_user_id / owner_name TEXT   at least one required by the API
+  escalation_owner_user_id   TEXT -> users   SET NULL, nullable
+  due_date                   TEXT
+  status       TEXT   CHECK IN (OPEN, IN_PROGRESS, COMPLETED,
+                     VERIFIED, CANCELLED)
+  completed_at               TEXT   nullable
+  verified_by                TEXT -> users   SET NULL, nullable -
+                          deliberately a different capability
+                          (action:verify) than the one that completes
+                          the action, so nobody signs off their own work
+  evidence                   TEXT   nullable - required before
+                          COMPLETED/VERIFIED
+  created_by                 TEXT -> users   SET NULL
+  created_at / updated_at
+
+------------------------------------------------------------ reviews --
+  id, project_id, institute_id
+  reviewer_user_id / reviewer_name   TEXT (name always kept, even if
+                          the account is later deleted)
+  review_date                 TEXT
+  previous_status              TEXT   nullable - the RAG status at the
+                          moment of review
+  recommended_status           TEXT   CHECK GREEN/YELLOW/RED, nullable
+  decision       TEXT   CHECK IN (APPROVED, CHANGES_REQUESTED,
+                     EVIDENCE_REQUESTED, ESCALATED, NOTED)
+  comments                     TEXT   required
+  corrective_action_summary    TEXT   nullable
+  next_review_date              TEXT   nullable
+  rubric_id                    TEXT -> review_rubrics   SET NULL,
+                          nullable - which rubric this review was
+                          scored against, if any
+  review_number                INTEGER   nullable - which round
+                          (Review 1/2/3...) this belongs to
+  scores                       TEXT   nullable - JSON object of
+                          {criterionName: awardedMarks}
+  created_at
+
+------------------------------------------------------ review_rubrics --
+  id             TEXT PK
+  institute_id   TEXT -> institutes   CASCADE
+  created_by     TEXT -> users   SET NULL, nullable
+  created_by_name TEXT
+  title          TEXT
+  description    TEXT   nullable
+  criteria       TEXT   JSON array of {name, maxMarks, description}
+  is_active      INTEGER
+  created_at
+
+  A mentor defines one rubric, then applies it identically across
+  every project (team) they guide - see scheduled_reviews below.
+
+--------------------------------------------------- scheduled_reviews --
+  id             TEXT PK
+  project_id     TEXT -> projects        CASCADE
+  institute_id   TEXT -> institutes      CASCADE
+  rubric_id      TEXT -> review_rubrics  CASCADE
+  review_number  INTEGER                 1, 2, 3, ...
+  title          TEXT                    e.g. "Review 2"
+  planned_date   TEXT   nullable
+  status         TEXT   CHECK IN (PLANNED, COMPLETED)
+  review_id      TEXT -> reviews   SET NULL, nullable - filled in once
+                          the slot is actually conducted
+  created_by     TEXT -> users   SET NULL, nullable
+  created_at
+  UNIQUE (project_id, rubric_id, review_number)  -- generating the
+                          same rubric's reviews twice for one project
+                          fills gaps rather than duplicating slots
+
+------------------------------------------------------ status_history --
+  id, project_id, institute_id
+  previous_status    TEXT   nullable (null on a project's first entry)
+  new_status         TEXT   CHECK GREEN/YELLOW/RED
+  changed_by / changed_by_name   TEXT   (name always kept)
+  changed_at          TEXT
+  rationale           TEXT   required, minimum 10 characters at the API
+  evidence            TEXT   nullable - required by the API for a
+                          RED -> GREEN transition specifically
+  approved_by / approved_by_name   TEXT   nullable - populated only
+                          when the transition needed approval
+  review_id            TEXT -> reviews   SET NULL, nullable
+
+  APPEND-ONLY: BEFORE UPDATE and BEFORE DELETE triggers abort any
+  attempt to alter or remove a row (see trigger detail below).
+
+------------------------------------------------ progress_submissions --
+  id             TEXT PK
+  project_id, institute_id
+  version        INTEGER                 increments per project
+  completion_percentage   INTEGER  CHECK 0-100
+  work_completed, work_in_progress, work_planned_next   TEXT nullable
+  problems_encountered, support_required                TEXT nullable
+  expected_completion_date                                TEXT nullable
+  student_remarks                                         TEXT nullable
+  proposed_rag_status     TEXT   CHECK GREEN/YELLOW/RED, nullable -
+                          a non-binding proposal; only an approval on
+                          the /status endpoint changes the official value
+  evidence                 TEXT nullable
+  status    TEXT   CHECK IN (DRAFT, PENDING_REVIEW, UNDER_REVIEW,
+                 APPROVED, REJECTED, CHANGES_REQUESTED)
+  submitted_by / submitted_by_name / submitted_at    nullable until
+                          actually submitted (a DRAFT has none of these)
+  reviewed_by / reviewed_by_name / review_comment / reviewed_at
+                          nullable until decided
+  created_at / updated_at
+
+  IMMUTABLE ONCE DECIDED: a trigger blocks any UPDATE that keeps the
+  status at APPROVED or REJECTED (i.e. blocks editing a decided row
+  in place), and a second trigger blocks DELETE unless the row is
+  still DRAFT. A CHANGES_REQUESTED row may still be edited and
+  resubmitted - that is the one legitimate return path.
+
+-------------------------------------------------- repository_links --
+  id, project_id, institute_id
+  provider     TEXT   default GITHUB
+  label        TEXT
+  repo_url     TEXT
+  visibility   TEXT   CHECK IN (PRIVATE, INTERNAL)
+  added_by     TEXT -> users   SET NULL, nullable
+  created_at
+
+------------------------------------------------------- attachments --
+  id, project_id, institute_id
+  kind          TEXT   CHECK IN (REPORT, PRESENTATION, IMAGE,
+                     RECORDING, OTHER)
+  label         TEXT
+  storage_key   TEXT   nullable - reference into object storage
+  external_url  TEXT   nullable - or a plain external link
+                     (at least one of storage_key/external_url
+                     required by the API)
+  content_type  TEXT   nullable
+  size_bytes    INTEGER   nullable
+  uploaded_by   TEXT -> users   SET NULL, nullable
+  created_at
+
+--------------------------------------------------------- notifications --
+  id             TEXT PK
+  user_id        TEXT -> users        CASCADE
+  institute_id   TEXT -> institutes   CASCADE, nullable
+  project_id     TEXT -> projects     CASCADE, nullable
+  event_type     TEXT   free text - see services/notifications.js EVENTS
+  title, body    TEXT
+  channel        TEXT   CHECK IN (IN_APP, EMAIL)
+  is_read        INTEGER
+  created_at
+  delivered_at   TEXT   nullable
+
+  Recipients are computed from access_grants at send time (the same
+  query shape used for reads), so a notification can never reach
+  someone who could not already see the underlying project.
+
+--------------------------------------------------------------- audit_log --
+  id             TEXT PK
+  occurred_at    TEXT
+  actor_user_id  TEXT -> users   SET NULL, nullable
+  actor_email    TEXT   nullable - kept even if the account is deleted
+  action         TEXT   free text (e.g. LOGIN_SUCCESS, PROJECT_UPDATED,
+                     CROSS_TENANT_ACCESS_DENIED, STATUS_CHANGE_REFUSED)
+  entity_type / entity_id   TEXT   nullable
+  institute_id   TEXT   nullable, NOT a foreign key (audit entries must
+                     survive an institute being deleted)
+  outcome        TEXT   CHECK IN (SUCCESS, DENIED, FAILURE)
+  ip_address, user_agent   TEXT   nullable
+  detail         TEXT   nullable - JSON blob of contextual detail
+
+  APPEND-ONLY: same trigger pattern as status_history.
+
+--------------------------------------------------------------------
+ TRIGGERS (append-only enforcement)
+--------------------------------------------------------------------
+
+  status_history_no_update    BEFORE UPDATE ON status_history
+  status_history_no_delete    BEFORE DELETE ON status_history
+      Both RAISE(ABORT). The update trigger has one narrow carve-out:
+      when a referenced user account is deleted, ON DELETE SET NULL
+      needs to null out changed_by/approved_by, and SQLite implements
+      that as an UPDATE. The WHEN clause lets exactly that one-directional
+      nulling through and rejects every other kind of change.
+
+  audit_log_no_update         BEFORE UPDATE ON audit_log
+  audit_log_no_delete         BEFORE DELETE ON audit_log
+      Same shape, same one narrow carve-out for actor_user_id.
+
+  progress_submission_decided_immutable   BEFORE UPDATE
+      Aborts if the row is already APPROVED/REJECTED and the update
+      would keep it in that same decided state (i.e. blocks editing
+      a decided row's content).
+
+  progress_submission_decided_no_delete   BEFORE DELETE
+      Aborts unless the row is still DRAFT.
+
+--------------------------------------------------------------------
+ INDEX SUMMARY  (30 total)
+--------------------------------------------------------------------
+
+  Every foreign-key-heavy lookup path used by the API has a matching
+  index: *_project, *_institute, *_department, *_user, *_status,
+  *_creator style indexes on every child table, plus a couple of
+  composite indexes for the two hottest queries:
+    idx_issues_project          (project_id, status)
+    idx_actions_project         (project_id, status)
+    idx_actions_due             (due_date, status)   - overdue-action
+                                sweeps
+    idx_progress_project        (project_id, version)
+    idx_audit_action            (action, outcome)
+
+--------------------------------------------------------------------
+ SECTION 9 - FOUNDATION INTEGRATION EXTENSION, v2
+             (theme, engine, gate, sprint & calendar model, per the
+             "Mini Project Handbook - Computer Science and
+             Engineering" v4, and the companion "Generic Mini Project
+             Framework" deck v1, 5 Sept 2026)
+--------------------------------------------------------------------
+STATUS: implemented (schema.sql, connection.js, seedFoundation.js, the
+route layer, and the UI). This is a full correction of an earlier (v1)
+version of this section that was built from a less precise, undated
+slide deck and got real things wrong: the gate marks totalled 100
+(the handbook's total is 50); the stage names, order and evidence
+detail were invented rather than sourced; there was no engine
+definition template, no sprint concept, and no academic calendar; and
+gate decisions used an invented 4-value enum where the handbook only
+ever uses two (Pass / Resubmit). v1's tables are corrected in place
+(same names, corrected columns and seed data) rather than replaced
+outright, via connection.js's migrate() - see the "V1 -> V2
+MIGRATION" note at the end of this section for exactly how an
+already-running database is brought up to date without data loss.
+
+9.0  WHY THIS SITS "AFTER GUIDE ALLOCATION"
+--------------------------------------------------------------------
+The handbook's framework is guide-owned at the team level and
+faculty-owned at the theme level (Sec "Next Steps: Faculty Theme
+Ownership", deck slide 95's "One Faculty -> One Theme"), and a formal
+Gate review is run by a Reviewer against a specific team's
+engineering evidence (Handbook "Roles & Expectations": Student /
+Guide / Reviewer). Neither a theme assignment nor a gate schedule
+means anything before a project has an accountable FACULTY_MENTOR -
+exactly the same dependency the existing review_rubrics ->
+scheduled_reviews mechanism already has on the guide relationship.
+
+So, consistent with how rubric-driven reviews are already gated:
+  - projects.theme_id may only be set by the API once the project has
+    an APPROVED project_members row with member_role = FACULTY_MENTOR
+    (i.e. after POST /assign-guide, mirroring the existing gate on
+    /rubrics/:id/generate-reviews).
+  - project_engines rows may only be created once a theme is set (an
+    engine is a decomposition of the project's technical
+    responsibilities, Handbook Sec 1.9) AND the project has an
+    APPROVED FACULTY_MENTOR.
+  - project_gate_reviews rows may only be created once at least one
+    APPROVED, student-owned engine exists (Handbook Sec 1.9.1's
+    validity test #8: "exactly one named owner accountable for its
+    design decisions" - a gate cannot evidence work that has no owner
+    of record).
+  - project_weekly_checkins may be logged by the guide from the same
+    point a guide exists, since the handbook positions weekly guide
+    check-ins as continuous, distinct from the formal gate review.
+This ordering is an application-layer rule (like the existing
+definition-freeze gate), not a DB constraint SQLite can express
+cleanly across role tables - document it here and enforce it in the
+route layer exactly where /assign-guide already sits.
+
+9.1  project_themes  (lookup/catalog - the "Ten Project Themes")
+--------------------------------------------------------------------
+  id                       TEXT PK
+  institute_id             TEXT -> institutes   CASCADE, nullable -
+                              NULL = platform-wide catalog theme (the
+                              handbook's ten CSE themes, seeded once);
+                              non-null = an institute's own custom
+                              theme, authored the same way
+  code                     TEXT   e.g. "RBAC-WORKFLOW", "SEARCH-ENGINE"
+  title                    TEXT   e.g. "Role-Based Workflow
+                              Management System"
+  academic_subtitle        TEXT   nullable - the one-line skill summary
+                              shown under the title
+  foundational_courses     TEXT   JSON array of the 6 foundation-course
+                              names this theme integrates - always all
+                              six, per "every theme integrates all six
+                              areas through a single runnable system"
+  core_concepts             TEXT   JSON array of {course, concepts} -
+                              the per-course integration mapping (deck's
+                              "Themes and Course/Concepts Mapped" tables)
+  minimum_evidence          TEXT   JSON array of evidence-artefact
+                              labels this theme requires beyond the
+                              generic gate checklist. Only populated
+                              for the two themes the source decks give
+                              full detail for (Role-Based Workflow
+                              Management System; Multi-Process Search
+                              Engine) - NULL for the other eight,
+                              documented gap, not silently invented.
+  final_artefact_description TEXT   nullable, same "only two themes
+                              have this" caveat as minimum_evidence
+  owner_faculty_user_id     TEXT -> users   SET NULL, nullable - the
+                              faculty member who has taken ownership
+                              of developing this theme's full reference
+                              solution ("One Faculty -> One Theme");
+                              NULL for a theme not yet claimed
+  is_active                 INTEGER
+  created_at                TEXT
+
+  Seed data for the platform catalog is the ten CSE themes both
+  source documents list identically: Role-Based Workflow Management
+  System; Multi-Process Search Engine with Persistent Index;
+  Constraint-Based Timetable Scheduling System; Transaction-Based
+  Inventory Management System; Multi-Threaded Log Analysis and
+  Alerting System; Peer-to-Peer File Sharing System; In-Memory
+  Key-Value Store with Persistence and Eviction; Build System and
+  Dependency Manager; Collaborative Real-Time Document Editor; Campus
+  Event and Resource Booking System with Conflict Detection.
+
+  projects.theme_id  TEXT -> project_themes   SET NULL, nullable
+      (new column on the existing projects table, added the same way
+      rubric_id was added to reviews - via addColumnIfMissing)
+  projects.theme_confirmed_by / theme_confirmed_by_name /
+      theme_confirmed_at   TEXT, nullable - mirrors the
+      frozen_by/frozen_at pattern; set when the guide (not the
+      student) finalises the theme selection
+
+9.2  project_engines  (Engine = "Independently Verifiable Technical
+     Responsibility", Handbook Sec 1.9 - the full 13-field "Engine
+     Definition & Readiness Template", not just a name and a category)
+--------------------------------------------------------------------
+  id                    TEXT PK
+  project_id            TEXT -> projects        CASCADE
+  institute_id          TEXT -> institutes      CASCADE
+  code                  TEXT   e.g. "E1", "E2" - unique per project_id
+  name                  TEXT   the engine's technical name
+  primary_course        TEXT   nullable, free text - the main
+                          foundation course/concept this engine is
+                          anchored in (OS / DSA / DBMS / Networks /
+                          Web / ...) - deliberately not a CHECK enum,
+                          the handbook's own worked example varies it
+                          per engine within one theme
+  responsibility        TEXT   the one computational responsibility
+                          this engine owns ("Engine != Screen / Page /
+                          CRUD Table / Menu" - Sec 1.9's key rule)
+  inputs / outputs       TEXT   nullable each - what the engine
+                          receives and produces (template fields 4-5)
+  internal_state         TEXT   nullable - the data/state this engine
+                          owns exclusively; validity test #2 requires
+                          "no two engines claim write authority over
+                          the same state"
+  algorithm_mechanism     TEXT   nullable - the algorithm, protocol,
+                          data structure, concurrency or transaction
+                          mechanism used (template field 7)
+  interface_spec          TEXT   nullable - the exposed API/function/
+                          message/protocol signature (template field 8)
+  dependencies_note        TEXT   nullable, free text (template field
+                          9) - the authoritative, cycle-checked
+                          dependency graph lives in
+                          project_engine_dependencies below; this
+                          column is the human-readable note only
+  kpi_target                TEXT   nullable - one measurable target,
+                          traceable to an NFR (validity test #7)
+  failure_case               TEXT   nullable - at least one realistic
+                          failure case and its expected behaviour
+                          (validity test #5 asks for three; one is
+                          required to leave PROPOSED - the other two
+                          are checked by the guide at approval time,
+                          not enforced by the schema)
+  validation_method           TEXT   nullable - how the student will
+                          test and evidence correctness (template
+                          field 12)
+  owner_member_id              TEXT -> project_members   SET NULL,
+                          nullable - "exactly one named owner" (validity
+                          test #8); must reference a project_members
+                          row with member_role = STUDENT, enforced at
+                          the API
+  status                       TEXT   CHECK IN (PROPOSED, APPROVED,
+                          IN_PROGRESS, VALIDATED) - the Engine
+                          Definition & Readiness Template lifecycle.
+                          The API will not move an engine to APPROVED
+                          - by anyone, including the guide who created
+                          it - unless inputs, outputs, algorithm_
+                          mechanism, interface_spec, kpi_target,
+                          failure_case and owner_member_id are all
+                          filled in; an incomplete engine is saved as
+                          PROPOSED regardless of who created it
+  approved_by / approved_by_name / approved_at   TEXT, nullable
+  created_at / updated_at   TEXT
+
+  UNIQUE (project_id, code)
+
+  Note on the v1 -> v2 correction: the old `category` and
+  `inputs_outputs` columns (a single combined field) are left in place
+  on an already-existing table, unused - SQLite can add a column
+  cheaply but not drop one without a full table rebuild, and nothing
+  reads those two columns any more. `primary_course` and separate
+  `inputs`/`outputs` columns replace them going forward.
+
+--------------------------------------------- project_engine_dependencies --
+  id                    TEXT PK
+  project_id            TEXT -> projects          CASCADE (denormalised
+                          for tenant-scoped queries, same convention
+                          as every other project-child table)
+  engine_id             TEXT -> project_engines    CASCADE
+  depends_on_engine_id   TEXT -> project_engines    CASCADE
+  note                  TEXT   nullable - why the dependency exists;
+                          feeds sprint sequencing (Handbook Sec 1.10:
+                          "Sprint sequencing depends on dependency
+                          readiness, interface availability, technical
+                          complexity and evidence produced")
+  created_at             TEXT
+
+  UNIQUE (engine_id, depends_on_engine_id)
+  CHECK (engine_id != depends_on_engine_id) - no self-dependency
+  (A -> B -> A cycles are a graph property, not something SQLite can
+  enforce with a constraint; the API validates acyclicity on insert,
+  same way progress_submissions.version incrementing is app-enforced.)
+
+9.3  Gate model - gates / stage_definitions / stage_gate_map
+--------------------------------------------------------------------
+The handbook defines a fixed sequence of eight stages (S0-S7, Sec 1.7
+Sequential Foundation + 1.8 Agile Technical Maturity Stages) reviewed
+at five formal gates (Gate 0-4, Sec 1.12), for a fixed 50-mark split:
+Gate 0 = 5, Gate 1 = 10, Gate 2 = 10, Gate 3 = 15, Gate 4 = 10. This is
+genuinely platform-wide pedagogy, not per-institute policy - so, like
+review_rubrics but unlike project data, it is modelled as a small
+SEEDED REFERENCE catalog (global rows, institute_id-free) that a
+PLATFORM_ADMIN can edit centrally rather than re-typing per
+institute, and that seedFoundation.js UPSERTS on every server start
+(not merely inserts-if-missing) - a corrected mark weight or stage
+name in a future handbook revision must reach an already-running
+deployment, which an insert-if-missing seed would never do.
+
+A gate reviews a RANGE of stage maturity, not one single closing
+stage: Gate 3 and Gate 4 both partially review S6/S7 (engine-level-
+in-progress vs system-level-closed, per Table 1.12's "Maturity
+evaluated" column). v1 modelled this as a single stage_definitions.
+gate_id column with a closes_gate boolean, which cannot express that
+overlap; v2 replaces it with a proper many-to-many join table.
+
+------------------------------------------------------------- gates --
+  id                     TEXT PK   "GATE_0".."GATE_4"
+  sequence               INTEGER   0-4
+  name                   TEXT   e.g. "Gate 0 - Problem Approval"
+  marks_weight           INTEGER   5 / 10 / 10 / 15 / 10 (sums to 50)
+  stage_range            TEXT   human-readable maturity range, e.g.
+                              "S6 (system-level), S7" for Gate 4
+  primary_review_focus   TEXT   the Table 1.12 "Primary review focus"
+                              text for this gate
+  course_outcomes        TEXT   JSON array of CO codes assessed at
+                              this gate, e.g. ["CO4", "CO5"]
+  default_week_number     INTEGER   nullable - the COE-calendar week
+                              this gate is scheduled in by default
+                              (Table 1.12); the actual date for a given
+                              academic year lives in calendar_weeks
+
+------------------------------------------------- stage_definitions --
+  id                       TEXT PK   "S0".."S7"
+  sequence                 INTEGER   0-7
+  name                     TEXT   e.g. "Problem Definition and Need
+                              Identification" (S0), "Root Cause
+                              Analysis and Improvement" (S7)
+  primary_question          TEXT   nullable - the stage's key question
+                              (Table 1.4/1.7/1.8)
+  expected_outcome          TEXT   nullable - the stage's typical/
+                              expected outcome (same tables)
+  description               TEXT   currently a copy of expected_outcome;
+                              kept as its own column for a future
+                              revision to diverge without a migration
+  is_sequential_foundation   INTEGER   0/1 - S0 and S1 are common to
+                              the whole team, "not sprinted and not
+                              parallelised across engines" (Sec 1.7);
+                              S2-S7 are Agile stages where engines may
+                              sit at different maturity levels within
+                              the same sprint (Sec 1.8)
+  evidence_checklist         TEXT   JSON array, nullable. Fully
+                              populated for S0 only (the Gate 0 Phase
+                              Assessment Sheet's 8-item deliverables
+                              checklist) - this handbook revision does
+                              not yet document S1-S7 to the same
+                              evidence-checklist level of detail, and
+                              this column is left NULL for them rather
+                              than inventing one. See 9.12 below.
+
+  S0's evidence_checklist (verbatim from the Gate 0 Phase Assessment
+  Sheet): Problem Discovery Note; Stakeholder Identification / Need
+  Table; AS-IS Workflow / Current Process; Problem Statement; Scope &
+  Out-of-Scope Statement; Technical & Operational Feasibility Note;
+  Initial Risk & Constraint Register; Initial KPI / Success-Criteria
+  Sheet.
+
+------------------------------------------------------ stage_gate_map --
+  stage_id   TEXT -> stage_definitions   CASCADE
+  gate_id    TEXT -> gates                CASCADE
+  PRIMARY KEY (stage_id, gate_id)
+
+  Seed rows (Table 1.12): S0->Gate0. S1->Gate1. S2,S3,S4->Gate2.
+  S5,S6,S7->Gate3. S6,S7->Gate4 (again - the overlap this table exists
+  to express).
+
+9.4  sprints  (Handbook Sec 1.10-1.11: a Sprint is a shared execution
+     window, a Stage is technical maturity, a Gate is a marked
+     review - three different ideas, not synonyms)
+--------------------------------------------------------------------
+  id              TEXT PK   "SPRINT_1".."SPRINT_3"
+  sequence        INTEGER   1-3
+  name            TEXT   "Sprint 1" / "Sprint 2" / "Sprint 3"
+  stage_range     TEXT   e.g. "S2-S3" (per the companion deck's
+                      sprint-to-gate closing map, slide 22)
+  objective       TEXT   the sprint's recommended objective (Table 1.10)
+  purpose         TEXT   nullable - the sprint's purpose sentence
+  closes_gate_id  TEXT -> gates   SET NULL, nullable - which gate this
+                      sprint's completion feeds into
+
+  Read-only reference data - no per-project "current sprint" is
+  tracked. An engine's actual progress varies per engine (tracked via
+  project_engines.status and the guide's weekly check-ins), not via
+  the shared calendar window every engine executes inside; a
+  "project.current_sprint" column would be misleading precisely
+  because different engines can be at different stages within one
+  sprint (Sec 1.10: "Engines may be at different maturity levels
+  within the same sprint").
+
+9.5  calendar_weeks  (Handbook Sec 1.15: the COE-aligned 17-week
+     calendar, Week 1 beginning 7 September 2026)
+--------------------------------------------------------------------
+  id                 TEXT PK   e.g. "2026-27-W02"
+  academic_year      TEXT   e.g. "2026-27" - scoped by academic year,
+                          not institute_id, because the calendar is a
+                          shared programme-wide schedule decision, not
+                          an institute-specific one
+  week_number        INTEGER   1-17
+  start_date / end_date   TEXT
+  activity           TEXT   e.g. "GATE 0 - Problem Approval (5 marks)"
+  stage_ids          TEXT   JSON array of stage_definitions ids active
+                          this week (empty for a protected/
+                          administrative week)
+  gate_id            TEXT -> gates      SET NULL, nullable
+  sprint_id          TEXT -> sprints    SET NULL, nullable
+  is_protected_week   INTEGER   0/1 - Minor-I (week 6) / Minor-II
+                          (week 14): no compulsory Mini Project activity
+  required_output      TEXT   the "required output, and the evidence
+                          that will be checked" column from Table 1.15
+
+  UNIQUE (academic_year, week_number)
+
+9.6  gate_rubric_criteria  (the weighted assessment rubric behind each
+     gate's marks - not a single opaque number)
+--------------------------------------------------------------------
+  id                 TEXT PK
+  gate_id            TEXT -> gates   CASCADE
+  sequence           INTEGER
+  criterion_name     TEXT
+  weight_marks       REAL   this criterion's share of the gate's total
+  level_descriptors  TEXT   JSON object {"5": "...", "4": "...", ...,
+                          "0": "..."}, nullable
+
+  Gate 0's four criteria and their full 0-5 performance descriptors
+  are transcribed verbatim from the handbook's own Gate 0 Assessment
+  Rubric: Problem Discovery & Stakeholder Evidence (1.25); AS-IS
+  Workflow, Problem Statement & Scope (1.25); Feasibility, Risks &
+  Initial Success Criteria (1.25); Evidence Authenticity & Individual
+  Understanding (1.25) - sum 5, matching "each criterion carries 1.25
+  marks" in the handbook text (the handbook's own per-row "Weight: 5
+  marks" label is a copy-paste artefact repeated identically on all
+  four rows, contradicted by its own explicit formula sentence; the
+  formula sentence is what is implemented).
+
+  Gates 1-4 do not have their level descriptors published in this
+  handbook revision, so their criteria are RECONSTRUCTED from Table
+  1.3.1's CO -> stage -> gate -> marks breakdown, with level_
+  descriptors left NULL:
+    Gate 1 (10): SRS with FR/NFR (6); Traceability Matrix (2);
+      Engine Decomposition and Ownership (2)  - directly stated in 1.3.1
+    Gate 2 (10): System Architecture (4); Data Model and API Design
+      (3); Algorithm and Business Logic Design (3)  - directly stated
+    Gate 3 (15): Implementation and Version-Control Discipline (6);
+      Engine Testing (6); RCA in Progress (3)
+    Gate 4 (10): Final Working System (2); System Validation and
+      Regression (3); RCA Closure (1); Report and Traceability (2);
+      Individual Viva (2)
+  The Gate 3/Gate 4 split is a reconstruction, not a direct quote:
+  Table 1.3.1's own components for CO4 ("Implementation and version-
+  control discipline (6) + final working system (2)") and CO5
+  ("Engine testing (6) + RCA in progress (3) + system validation and
+  regression (3) + RCA closure (1) + report and traceability (2)")
+  are matched to whichever gate's Table-1.12 "primary review focus"
+  each component phrase corresponds to (e.g. "RCA started" -> Gate 3's
+  "RCA in Progress"; "defect closure" -> Gate 4's "RCA Closure"), and
+  the match is only trusted because the resulting weights sum exactly
+  to each gate's stated total (15 and 10) - including a 2-mark
+  Individual Viva that Table 1.3.1 lists with no explicit mark value,
+  inferred as the remainder needed to reach Gate 4's 10. Table 1.3.1's
+  own "CO4: 25 marks" figure is NOT used directly - it does not match
+  its own listed components (which sum to 8) and is almost certainly
+  Gate 3 + Gate 4 combined (15 + 10 = 25), a merged-cell artefact from
+  the source document's table. This entire reconstruction, and its
+  verification logic, lives as a code comment directly above
+  RUBRIC_CRITERIA_BY_GATE in server/src/db/seedFoundation.js.
+
+9.7  project_gate_reviews  (the FORMAL, team-level review decision -
+     run by a Reviewer, distinct from the guide's continuous weekly
+     check-ins - "Weekly Review Vs Formal Gate Review")
+--------------------------------------------------------------------
+  id                TEXT PK
+  project_id        TEXT -> projects       CASCADE
+  institute_id      TEXT -> institutes     CASCADE
+  gate_id           TEXT -> gates          CASCADE
+  attempt_number     INTEGER   1, 2, ... - a Resubmit decision allows
+                          a re-attempt; same versioning idea as
+                          progress_submissions, not an in-place edit
+  reviewer_user_id / reviewer_name   TEXT   (name always kept)
+  review_date        TEXT
+  decision           TEXT   CHECK IN (PASS, RESUBMIT) - the handbook's
+                          own terms (Phase Assessment Sheet: "Team
+                          Decision: Pass / Resubmit"). Deliberately not
+                          FAIL: a team resubmits corrected evidence: it
+                          does not fail a semester's mini project.
+  max_marks           TEXT   denormalised from gates.marks_weight at
+                          review time, so a later change to the seeded
+                          weight never rewrites history
+  comments            TEXT   required, same convention as reviews.comments
+  next_gate_unlocked   INTEGER   0/1 - set true only on PASS; the API
+                          refuses to open a gate review for gate[n+1]
+                          while the current gate's latest attempt has
+                          this at 0
+  created_at           TEXT
+
+  UNIQUE (project_id, gate_id, attempt_number)
+
+  IMMUTABLE ONCE DECIDED: same trigger shape as
+  progress_submission_decided_immutable/no_delete - a PASS attempt can
+  never be edited or deleted; a RESUBMIT attempt is superseded by a
+  new attempt_number rather than rewritten.
+
+------------------------------------------ project_gate_review_scores --
+  id                 TEXT PK
+  gate_review_id     TEXT -> project_gate_reviews   CASCADE
+  member_id          TEXT -> project_members         CASCADE, must be
+                          a STUDENT member of the project
+  criterion_ratings  TEXT   JSON object {criterionName: rating 0-5},
+                          one entry per this gate's gate_rubric_criteria
+  marks_awarded      REAL   computed server-side as
+                          sum((rating / 5) * criterion.weight_marks)
+                          across every rated criterion - the exact
+                          formula given on the Gate 0 Assessment Rubric,
+                          applied generically to every gate
+  viva_notes         TEXT   nullable
+
+  UNIQUE (gate_review_id, member_id)
+
+  This table is v2's answer to the Phase Assessment Sheet's "5 MARKS
+  PER STUDENT" line and the Gate 4 individual viva: v1 had a single
+  marks_awarded/bloom_answers pair on project_gate_reviews itself,
+  which can only record one team-wide mark - it cannot express that
+  four students on the same team receive four different marks against
+  the same rubric, which the handbook explicitly requires.
+
+--------------------------------------------- project_gate_evidence --
+  id                    TEXT PK
+  gate_review_id         TEXT -> project_gate_reviews   CASCADE
+  stage_id               TEXT -> stage_definitions   SET NULL,
+                          nullable - the specific stage (within the
+                          gate) this evidence item satisfies, so a
+                          reviewer can check "dated evidence before the
+                          next stage began" (Handbook Sec 1.5)
+  checklist_item          TEXT   the specific item being satisfied,
+                          drawn from stage_definitions.evidence_checklist
+                          or project_themes.minimum_evidence
+  evidence_ref_type        TEXT   CHECK IN (ATTACHMENT, REPOSITORY_LINK,
+                          PROGRESS_SUBMISSION, TEXT_NOTE) - evidence is
+                          NEVER re-uploaded into a new blob store; it
+                          points at the artefact tables that already
+                          exist (attachments, repository_links,
+                          progress_submissions), keeping exactly one
+                          storage location per file/commit/report
+  evidence_ref_id          TEXT   nullable - id into whichever table
+                          evidence_ref_type names; TEXT_NOTE rows leave
+                          this null and use `note` instead
+  note                    TEXT   nullable - free-text evidence (e.g. a
+                          dated design decision) when no file/link
+                          applies
+  submitted_by / submitted_by_name / submitted_at   TEXT
+
+9.8  project_weekly_checkins  (the guide's continuous, INFORMAL check
+     - "Verifies process discipline between reviews")
+--------------------------------------------------------------------
+  id                        TEXT PK
+  project_id                TEXT -> projects      CASCADE
+  institute_id              TEXT -> institutes    CASCADE
+  guide_user_id / guide_name TEXT   (name always kept)
+  checkin_date               TEXT
+  stage_id                   TEXT -> stage_definitions   SET NULL,
+                          nullable - which in-progress stage this
+                          check-in covers
+  git_commits_reviewed        TEXT   nullable - what the guide looked
+                          at (Handbook Sec 1.5: "Faculty must compare
+                          document dates with Git history")
+  process_discipline_notes    TEXT   nullable
+  flags                      TEXT   nullable - JSON array of concern
+                          tags (BULK_COMMIT, POST_DATED_DOC,
+                          UNDOCUMENTED_DESIGN_CHANGE - the weak-
+                          evidence patterns the Guide/Reviewer role
+                          descriptions call out by name)
+  created_at                 TEXT
+
+  Deliberately NOT append-only/immutable like project_gate_reviews:
+  this is a lightweight coaching log, not a graded decision.
+
+9.9  Indexes (for symmetry with the existing 30)
+--------------------------------------------------------------------
+  idx_themes_institute, idx_themes_owner
+  idx_engines_project, idx_engines_owner
+  idx_engine_deps_engine, idx_engine_deps_depends_on
+  idx_stages_gate (legacy, kept - see 9.10), idx_rubric_criteria_gate
+  idx_calendar_year
+  idx_gate_reviews_project, idx_gate_scores_review
+  idx_gate_evidence_review
+  idx_weekly_checkins_project
+
+9.10  V1 -> V2 MIGRATION (how an already-running database is corrected)
+--------------------------------------------------------------------
+connection.js's migrate() applies three different strategies depending
+on what actually needs to change on a table that pre-dates v2:
+
+  - gates, stage_definitions: ADDITIVE columns only
+    (addColumnIfMissing), never dropped or rebuilt. A DROP TABLE gates
+    was tried during development and rejected: project_gate_reviews.
+    gate_id has ON DELETE CASCADE onto gates, so dropping gates
+    cascade-deletes real gate-review rows, which hits their append-
+    only trigger and aborts the whole migration. The old, now-unused
+    `closing_stage_id` (gates) and `gate_id` (stage_definitions,
+    still NOT NULL from v1) columns are left in place; seedFoundation.
+    js detects whether stage_definitions.gate_id still exists and, if
+    so, supplies a legacy value for it so the NOT NULL constraint on
+    an old-shaped table is still satisfied.
+
+  - project_engines: ADDITIVE columns only (the nine new template
+    fields); `category`/`inputs_outputs` are left in place, unused.
+
+  - project_gate_reviews: an actual REBUILD, because its CHECK
+    constraint changed (4 decision values narrowed to 2) and two
+    columns were removed (marks_awarded, bloom_answers, both moved to
+    project_gate_review_scores) - changes SQLite cannot ALTER in
+    place. migrate() renames the old-shaped table aside, lets
+    schema.sql recreate it correctly, copies every row back with the
+    old decision mapped onto the new enum (CONDITIONAL_PASS -> PASS;
+    FAIL and RESUBMIT_REQUIRED -> RESUBMIT), and drops the renamed-
+    aside copy. The old marks_awarded/bloom_answers values are not
+    preserved in that copy, since per-student marks are now a
+    genuinely different table this one no longer carries at all.
+
+  - stage_gate_map, sprints, calendar_weeks, gate_rubric_criteria,
+    project_gate_review_scores: brand new tables, created by CREATE
+    TABLE IF NOT EXISTS with no migration concern.
+
+  All of the above was verified against both a fresh database and a
+  copy of the actual pre-v2 live database (including its one real
+  demo gate-review row, which survives the rebuild correctly), and
+  confirmed idempotent (migrate() run twice back-to-back produces no
+  errors and no duplication).
+
+9.11  What this deliberately does NOT change
+--------------------------------------------------------------------
+  - reviews / review_rubrics / scheduled_reviews are untouched. They
+    remain the mentor-defined, per-team rubric-scoring mechanism
+    already built (e.g. "Review 1/2/3"). project_gate_reviews is a
+    parallel, separate mechanism for the handbook's fixed Gate 0-4
+    academic-credit structure - the two are not the same concept (one
+    is mentor-authored and flexible; the other is a fixed, 50-mark,
+    programme-wide rubric) and should not be merged into one table.
+  - RAG status (projects.rag_status) is left alone. A future
+    enhancement could derive a RAG signal from gate outcomes (e.g. a
+    Resubmit decision proposing RED), but that is a policy decision
+    for the API layer, not a schema requirement, and is out of scope.
+
+9.12  Known, documented gaps (not silently guessed answers)
+--------------------------------------------------------------------
+  - stage_definitions.evidence_checklist is populated for S0 only.
+    Handbook v4 documents Week 1/S0/Gate 0 down to a faculty-execution
+    and evidence-checklist level (its full Chapter 2); it does not yet
+    document S1-S7 to the same depth. Rather than inventing plausible-
+    sounding checklists for S1-S7, that column is left NULL for them.
+  - gate_rubric_criteria.level_descriptors (the 0-5 performance
+    descriptor text) exists only for Gate 0. Gates 1-4's criteria
+    names and weights are a verified reconstruction (see 9.6); their
+    prose descriptors are not published anywhere in the current
+    handbook revision and are not guessed here.
+  - project_themes.minimum_evidence and final_artefact_description
+    are populated for 2 of the 10 themes only (the two the source
+    material gives full worked-example detail for), NULL for the rest.
+
+====================================================================
+ END OF DATABASE DESIGN
+====================================================================

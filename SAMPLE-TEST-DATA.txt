@@ -1,0 +1,491 @@
+====================================================================
+ SAMPLE TEST DATA - for manual entry into the running application
+ Nothing in this file has been written to the app or the database.
+ Every field name below matches the actual label on the form.
+====================================================================
+
+Institute: KLE Tech (KLE Technological University), Hubballi
+Department: Computer Science and Engineering (CSE)
+
+Sign in first as: platform.admin@apnileap.example / Passw0rd!2026
+(or any account with project:create - see ROLE ACCOUNTS at the end)
+
+
+====================================================================
+ PART 1 - THREE PROJECTS FOR KLE TECH / CSE
+ Screen: Department page (KLE Tech -> CSE) -> "Add a project"
+====================================================================
+
+--------------------------------------------------------------------
+PROJECT 1
+--------------------------------------------------------------------
+Project code (required)........ KLE-CSE-2026-11
+Academic year (required)....... 2025-26
+Semester (required)............ Semester 6
+Project title (required)....... Smart Attendance System Using Facial Recognition
+Start date...................... 2026-01-15
+Expected completion............. 2026-05-20
+First review date............... 2026-02-28
+
+Project title / theme........... Smart Attendance System Using Facial Recognition
+Need statement................... Manual roll-call in large lecture halls wastes
+                                   5-10 minutes of every class and is easy to
+                                   proxy for absent students.
+Problem statement................ There is no low-cost, privacy-respecting way
+                                   for a single instructor to record attendance
+                                   for 120+ students within the first two
+                                   minutes of a lecture.
+Objective......................... Build a camera-based attendance system that
+                                   recognises enrolled students from a single
+                                   classroom camera feed and logs attendance to
+                                   a database within 2 minutes of class start.
+Learning outcomes................ Computer vision pipelines, face embedding
+                                   models, database design, edge-case handling
+                                   for lighting and occlusion, data privacy.
+Foundation courses anchored...... Digital Image Processing; Database Management
+                                   Systems; Machine Learning.
+Functional blocks................ Camera capture module; face detection and
+                                   embedding service; student matching engine;
+                                   attendance database; instructor dashboard.
+Interfaces........................ USB/IP camera feed; REST API between capture
+                                   module and matching engine; web dashboard for
+                                   the instructor.
+Dependencies...................... Classroom camera hardware; enrolled-student
+                                   photo dataset with consent; GPU-enabled lab
+                                   machine for model inference.
+Expected deliverables............ Working prototype tested in one classroom,
+                                   accuracy report, consent and privacy note,
+                                   instructor user guide.
+
+--------------------------------------------------------------------
+PROJECT 2
+--------------------------------------------------------------------
+Project code (required)........ KLE-CSE-2026-12
+Academic year (required)....... 2025-26
+Semester (required)............ Semester 6
+Project title (required)....... Campus Lost-and-Found Portal
+Start date...................... 2026-01-15
+Expected completion............. 2026-05-20
+First review date............... 2026-03-05
+
+Project title / theme........... Campus Lost-and-Found Portal
+Need statement.................... Lost items on campus are currently tracked on
+                                   a single physical notice board at the security
+                                   office, which most students never check.
+Problem statement................ There is no searchable, campus-wide record of
+                                   lost and found items, so genuine matches are
+                                   frequently missed.
+Objective......................... Build a web portal where anyone can report a
+                                   lost or found item with a photo, and search
+                                   existing reports by category, location and
+                                   date.
+Learning outcomes................ Full-stack web development, image upload and
+                                   storage, search/filter UX design, moderation
+                                   workflows.
+Foundation courses anchored...... Web Technologies; Software Engineering;
+                                   Database Management Systems.
+Functional blocks................ Report submission form; image storage;
+                                   search/filter engine; security-office
+                                   moderation queue; notification on match.
+Interfaces........................ Public web form; security office admin
+                                   panel; email notification service.
+Dependencies...................... Object storage for photos; security office
+                                   sign-off on the moderation workflow.
+Expected deliverables............ Deployed portal, moderation guide for the
+                                   security office, demo video.
+
+--------------------------------------------------------------------
+PROJECT 3
+--------------------------------------------------------------------
+Project code (required)........ KLE-CSE-2026-13
+Academic year (required)....... 2025-26
+Semester (required)............ Semester 6
+Project title (required)....... Hostel Mess Menu and Feedback Tracker
+Start date...................... 2026-01-15
+Expected completion............. 2026-05-20
+First review date............... 2026-02-20
+
+Project title / theme........... Hostel Mess Menu and Feedback Tracker
+Need statement.................... Hostel students have no advance visibility of
+                                   the weekly mess menu and no structured way to
+                                   give feedback on food quality.
+Problem statement................ Menu changes are announced informally and
+                                   feedback, when given, is verbal and never
+                                   recorded or acted on.
+Objective......................... Build a mobile-friendly app that publishes
+                                   the weekly menu and collects a daily 1-5
+                                   rating with optional comments per meal.
+Learning outcomes................ Responsive UI design, REST API design, basic
+                                   data analytics for trend reporting, working
+                                   with a non-technical stakeholder (mess
+                                   committee).
+Foundation courses anchored...... Web Technologies; Human-Computer Interaction;
+                                   Database Management Systems.
+Functional blocks................ Menu publishing module; daily feedback form;
+                                   ratings database; weekly trend report for the
+                                   mess committee.
+Interfaces........................ Mobile web app; mess committee report export
+                                   (CSV/PDF).
+Dependencies...................... Mess committee agreement to publish the menu
+                                   digitally each week.
+Expected deliverables............ Deployed app, four weeks of live feedback
+                                   data, a trend report template for the mess
+                                   committee.
+
+
+====================================================================
+ PART 2 - THREE SAMPLE ENTRIES PER ROLE
+ Matches the exact fields on that role's own screens.
+====================================================================
+
+--------------------------------------------------------------------
+PLATFORM ADMINISTRATOR
+Screen: Administration -> Create an account
+--------------------------------------------------------------------
+
+Account 1
+  Full name.................. Dr. Meera Joshi
+  Email address............... coordinator2@kletech.example
+  Designation................. Programme Coordinator, KLE
+  Temporary password.......... TempPass1234
+  Role......................... Faculty Coordinator
+  Scope........................ Whole institute
+  Institute.................... KLE Tech
+
+Account 2
+  Full name.................. Prof. Ramesh Iyer
+  Email address............... mentor.iyer2@kletech.example
+  Designation................. Assistant Professor, CSE
+  Temporary password.......... TempPass1234
+  Role......................... Faculty Mentor / Guide
+  Scope........................ One department
+  Institute.................... KLE Tech
+  Department................... Computer Science and Engineering
+
+Account 3
+  Full name.................. Ananya Rao
+  Email address............... trustee2@apnileap.example
+  Designation................. Programme Trustee
+  Temporary password.......... TempPass1234
+  Role......................... Read-only Stakeholder
+  Scope........................ Whole institute
+  Institute.................... KLE Tech
+
+--------------------------------------------------------------------
+GLOBAL PROGRAMME LEADER
+Screen: Project page -> Reviews & history -> "Record a review"
+(recorded on any project within an authorized institute)
+--------------------------------------------------------------------
+
+Review 1
+  Decision..................... Noted
+  Comments...................... Portfolio review across KLE Tech: overall RAG
+                                 distribution is healthy this cycle. No
+                                 cross-institute escalation required this week.
+  Recommended status............ (leave blank)
+  Next review date.............. 2026-03-15
+
+Review 2
+  Decision..................... Escalated
+  Comments...................... Requesting institute-level support for the
+                                 procurement delay affecting this team - raising
+                                 to the KLE institute administrator for
+                                 visibility at the programme level.
+  Recommended status............ Red
+  Next review date.............. 2026-02-25
+
+Review 3
+  Decision..................... Approved
+  Comments...................... Cross-institute comparison shows this team's
+                                 KPI evidence meets the programme-wide bar.
+                                 Approved to proceed to the next milestone.
+  Recommended status............ Green
+  Next review date.............. 2026-04-01
+
+--------------------------------------------------------------------
+INSTITUTE ADMINISTRATOR
+Screen: Institute page -> Departments -> "Add a department"
+(and Administration -> Create an account, same fields as above)
+--------------------------------------------------------------------
+
+Department 1
+  Institute.................... KLE Tech
+  Code (required).............. IT
+  Name (required).............. Information Technology
+
+Department 2
+  Institute.................... KLE Tech
+  Code (required).............. CIVIL
+  Name (required).............. Civil Engineering
+
+Department 3
+  Institute.................... KLE Tech
+  Code (required).............. AIML
+  Name (required).............. Artificial Intelligence and Machine Learning
+
+--------------------------------------------------------------------
+DEAN / PRINCIPAL
+Screen: Project page -> Reviews & history -> "Record a review"
+--------------------------------------------------------------------
+
+Review 1
+  Decision..................... Changes requested
+  Comments...................... Institutional review: please attach the
+                                 mid-semester KPI evidence before the next
+                                 department review meeting.
+  Recommended status............ Yellow
+  Next review date.............. 2026-03-10
+
+Review 2
+  Decision..................... Approved
+  Comments...................... Departmental risk review complete. Project is
+                                 progressing to plan; no intervention needed
+                                 from the Dean's office at this time.
+  Recommended status............ Green
+  Next review date.............. 2026-04-10
+
+Review 3
+  Decision..................... Escalated
+  Comments...................... Assigning institute-level intervention: the
+                                 team needs industry-partner support that the
+                                 department cannot provide alone.
+  Recommended status............ Red
+  Next review date.............. 2026-02-18
+
+--------------------------------------------------------------------
+DEPARTMENT HEAD
+Screen: Project page -> Reviews & history -> "Record a review"
+(also: Mentor Registrations page, and approving pending team members
+ on the project's Overview -> Team card)
+--------------------------------------------------------------------
+
+Review 1
+  Decision..................... Evidence requested
+  Comments...................... Please attach the calibration test log
+                                 referenced in the last mentor update before
+                                 this can be marked complete.
+  Recommended status............ (leave blank)
+  Next review date.............. 2026-02-22
+
+Review 2
+  Decision..................... Approved
+  Comments...................... Department-level review: milestone 2 evidence
+                                 is satisfactory. Mentor actions are on track.
+  Recommended status............ Green
+  Next review date.............. 2026-03-22
+
+Review 3
+  Decision..................... Noted
+  Comments...................... Reviewed mentor's corrective-action log for
+                                 this team. No further department action
+                                 required this cycle.
+  Recommended status............ (leave blank)
+  Next review date.............. 2026-04-05
+
+--------------------------------------------------------------------
+FACULTY MENTOR / GUIDE
+Use the 3 projects in PART 1. Below are 3 sample entries for EACH
+of a mentor's day-to-day screens, using Project 1 (KLE-CSE-2026-11)
+as the example.
+--------------------------------------------------------------------
+
+>>> Screen: Project -> Milestones & KPIs -> "Add a milestone"
+
+Milestone 1
+  Milestone (required)........ Literature review and dataset survey complete
+  Description................. Reviewed 3 existing face-recognition attendance
+                               systems; identified an open student-photo
+                               dataset usable for prototyping.
+  Planned date................. 2026-01-30
+
+Milestone 2
+  Milestone (required)........ Face detection module working on live feed
+  Description................. Camera capture and face detection pipeline runs
+                               in real time on the lab machine at 15+ fps.
+  Planned date................. 2026-03-01
+  (mark as Critical milestone)
+
+Milestone 3
+  Milestone (required)........ Classroom pilot with 30 students
+  Description................. Full pipeline tested in one real classroom
+                               session with consenting students.
+  Planned date................. 2026-04-25
+  (mark as Critical milestone)
+
+>>> Screen: Project -> Milestones & KPIs -> "Add a KPI"
+
+KPI 1
+  KPI name (required).......... Recognition accuracy
+  How it is measured........... Percentage of enrolled students correctly
+                               identified from a single classroom frame.
+  Target (required)............ > 92
+  Unit.......................... %
+  Accountable owner............. Prof. Sanjay Hegde
+
+KPI 2
+  KPI name (required).......... Attendance logging time
+  How it is measured........... Wall-clock time from class start to attendance
+                               being written to the database.
+  Target (required)............ < 2
+  Unit.......................... minutes
+  Accountable owner............. Prof. Sanjay Hegde
+
+KPI 3
+  KPI name (required).......... False-match rate
+  How it is measured........... Percentage of attendance entries matched to
+                               the wrong student.
+  Target (required)............ < 1
+  Unit.......................... %
+  Accountable owner............. Prof. Sanjay Hegde
+
+>>> Screen: Project -> Challenges & actions -> "Raise a challenge or blocker"
+
+Challenge 1
+  What is the challenge? (required).. Lab GPU machine unavailable
+  Describe the blocker (required).... The shared lab GPU workstation needed for
+                                     model inference is booked by another batch
+                                     for the next three weeks.
+  Root cause.......................... Only one GPU-enabled machine is shared
+                                     across all final-year project teams.
+  Impact.............................. Milestone 2 (face detection on live feed)
+                                     cannot be tested until GPU access resumes.
+  Support required.................... Either priority GPU slot allocation or
+                                     access to a cloud GPU instance.
+  Severity............................ High
+  Support source....................... Institute
+  Escalation level..................... Department
+
+Challenge 2
+  What is the challenge? (required).. Low light accuracy drop
+  Describe the blocker (required).... Recognition accuracy drops to ~70% under
+                                     the dim lighting typical of the 8am lecture
+                                     hall slot.
+  Root cause.......................... Face embedding model was trained mostly
+                                     on well-lit reference photos.
+  Impact.............................. KPI 1 (recognition accuracy) will not be
+                                     met for early-morning classes without a fix.
+  Support required.................... Guidance on low-light image augmentation
+                                     techniques.
+  Severity............................ Medium
+  Support source....................... Department
+  Escalation level..................... None
+
+Challenge 3
+  What is the challenge? (required).. Consent form turnaround
+  Describe the blocker (required).... Only 40 of 120 students in the pilot
+                                     classroom have returned signed photo-
+                                     consent forms so far.
+  Root cause.......................... Consent forms were distributed only in
+                                     one lecture with no follow-up reminder.
+  Impact.............................. The classroom pilot milestone cannot use
+                                     a representative student sample yet.
+  Support required.................... Help from the class representative to
+                                     circulate a reminder.
+  Severity............................ Low
+  Support source....................... None
+  Escalation level..................... None
+
+>>> Screen: Project -> Challenges & actions -> "Create a corrective action"
+    (create one for each challenge above, in order)
+
+Action 1 (for Challenge 1)
+  Linked challenge............. Lab GPU machine unavailable
+  What will be done? (required) Request a temporary priority slot on the lab
+                               GPU machine from the department office, or
+                               provision a short-term cloud GPU instance.
+  Owner......................... Prof. Sanjay Hegde
+  Target resolution date........ 2026-02-10
+
+Action 2 (for Challenge 2)
+  Linked challenge............. Low light accuracy drop
+  What will be done? (required) Augment the training set with brightness- and
+                               contrast-shifted copies of existing photos and
+                               retrain the embedding model.
+  Owner......................... Prof. Sanjay Hegde
+  Target resolution date........ 2026-03-15
+
+Action 3 (for Challenge 3)
+  Linked challenge............. Consent form turnaround
+  What will be done? (required) Class representative to send a reminder and
+                               collect remaining consent forms within one week.
+  Owner name (free text)........ Class Representative, Section A
+  Target resolution date........ 2026-02-05
+
+>>> Screen: Project -> Reviews & history -> "Review rubrics" -> "+ New rubric"
+
+Rubric: Semester Review Rubric
+  Rubric title.................. Semester Review Rubric
+  Criterion 1: name = Technical progress, Max marks = 40
+  Criterion 2: name = Documentation,       Max marks = 20
+  Criterion 3: name = Presentation,        Max marks = 20
+  Criterion 4: name = Teamwork,            Max marks = 20
+
+Then click "Generate reviews for all my teams" with:
+  Number of reviews............. 3
+This creates Review 1 / Review 2 / Review 3 for every project this
+mentor guides, all using the rubric above.
+
+>>> Screen: Project -> Reviews & history -> Scheduled reviews -> "Record Review 1"
+    (once generated, for Project 1)
+
+  Technical progress (max 40)... 34
+  Documentation (max 20)........ 15
+  Presentation (max 20)......... 17
+  Teamwork (max 20).............. 18
+  Decision....................... Approved
+  Comments (required)............ Prototype detects faces reliably in good
+                                 lighting; documentation needs more detail on
+                                 the model training process before Review 2.
+
+--------------------------------------------------------------------
+REVIEWER / SUCCESS COACH
+Screen: Project page -> Reviews & history -> "Record a review"
+--------------------------------------------------------------------
+
+Review 1
+  Decision..................... Approved
+  Comments...................... External review: demonstrated working
+                                 end-to-end pipeline in the coaching session
+                                 today. Strong progress against the plan.
+  Recommended status............ Green
+  Next review date.............. 2026-03-20
+
+Review 2
+  Decision..................... Changes requested
+  Comments...................... Please add a short user-testing summary
+                                 (at least 5 participants) before the next
+                                 coaching session.
+  Recommended status............ Yellow
+  Next review date.............. 2026-03-01
+
+Review 3
+  Decision..................... Evidence requested
+  Comments...................... The claimed 92% accuracy figure needs a
+                                 reproducible test log attached - please share
+                                 the raw results spreadsheet.
+  Recommended status............ (leave blank)
+  Next review date.............. 2026-02-27
+
+--------------------------------------------------------------------
+READ-ONLY STAKEHOLDER
+No data-entry screens - this role can only view dashboards, project
+detail pages and the weekly report. There is nothing to type in.
+--------------------------------------------------------------------
+
+
+====================================================================
+ ROLE ACCOUNTS ALREADY SET UP (for signing in to test each screen)
+====================================================================
+
+Platform Administrator   platform.admin@apnileap.example      Passw0rd!2026
+Global Programme Leader  programme.leader@apnileap.example     Leader@2026!
+Institute Administrator  institute.admin@kletech.example       InstAdmin@2026!
+Dean / Principal         dean@kletech.example                  Dean@2026!
+Department Head          head.cse@kletech.example              DeptHead@2026!
+Faculty Mentor / Guide   mentor.hegde@kletech.example           Mentor@2026!
+Reviewer / Success Coach reviewer.coach@apnileap.example        Reviewer@2026!
+Read-only Stakeholder    stakeholder@apnileap.example           ReadOnly@2026!
+
+====================================================================
+End of file.
+====================================================================
