@@ -190,6 +190,11 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   background: var(--surface); border: 1.5px solid var(--line); color: var(--ink-soft);
 }
 .captcha-refresh:hover { color: var(--brand); border-color: var(--ink-faint); }
+.pw-toggle {
+  flex: none; padding: 0 var(--sp-3); font-size: var(--fs-caption);
+  background: var(--surface); border: 1.5px solid var(--line); color: var(--ink-soft);
+}
+.pw-toggle:hover { color: var(--brand); border-color: var(--ink-faint); }
 
 .auth-foot {
   margin-top: var(--sp-3); font-size: var(--fs-body); text-align: center;

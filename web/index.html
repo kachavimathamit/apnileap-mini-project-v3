@@ -23,7 +23,10 @@
         </div>
         <div class="field">
           <label for="password">Password</label>
-          <input id="password" name="password" type="password" autocomplete="current-password" required />
+          <div class="captcha-row">
+            <input id="password" name="password" type="password" autocomplete="current-password" required />
+            <button type="button" id="pw-toggle" class="pw-toggle" aria-label="Show password" aria-pressed="false">Show</button>
+          </div>
         </div>
         <div class="field">
           <label for="captcha-answer">Verify you're human: <span id="captcha-question"></span></label>
@@ -59,6 +62,17 @@
     const errorText = document.getElementById('error-text');
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
+
+    // Look-alike characters (0 vs O, 1 vs l) are invisible behind password
+    // dots, so let the user reveal what they actually typed before submitting.
+    const pwToggle = document.getElementById('pw-toggle');
+    pwToggle.addEventListener('click', () => {
+      const show = passwordInput.type === 'password';
+      passwordInput.type = show ? 'text' : 'password';
+      pwToggle.textContent = show ? 'Hide' : 'Show';
+      pwToggle.setAttribute('aria-pressed', String(show));
+      pwToggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
     const captchaQuestion = document.getElementById('captcha-question');
     const captchaAnswerInput = document.getElementById('captcha-answer');
     const captchaRefreshBtn = document.getElementById('captcha-refresh');
