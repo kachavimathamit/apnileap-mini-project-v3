@@ -103,10 +103,10 @@ strong, b { font-weight: 650; }
 
 /* ============================================================ form fields */
 
-.field { margin-bottom: var(--sp-4); }
+.field { margin-bottom: var(--sp-3); }
 .field label {
-  display: block; font-size: var(--fs-body); font-weight: 650;
-  margin-bottom: var(--sp-1); line-height: 1.4;
+  display: block; font-size: var(--fs-caption); font-weight: 650;
+  margin-bottom: 0.25rem; line-height: 1.35;
 }
 
 /* Scoped to .auth-card (not a bare input[type='text']) so this never
@@ -114,11 +114,11 @@ strong, b { font-weight: 650; }
    cards elsewhere in the app (see .student-edit-row further down). */
 input[type='email'], input[type='password'], .auth-card input[type='text'] {
   width: 100%;
-  min-height: var(--tap);
-  padding: 0.6rem 0.75rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.7rem;
   font: inherit;
   font-size: var(--fs-body); /* at least 16px, so iOS Safari never zooms on focus */
-  line-height: 1.5;
+  line-height: 1.4;
   border: 1.5px solid var(--line); border-radius: var(--radius-sm);
   background: var(--surface); color: var(--ink);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -163,61 +163,67 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 /* ============================================================ sign-in page */
 
 .auth-page {
-  min-height: 100%; display: grid; place-items: center;
-  padding: var(--sp-4);
+  min-height: 100%; display: flex;
+  padding: var(--sp-3);
   background: linear-gradient(160deg, #0e1d33 0%, #1a3255 60%, #23406e 100%);
   background-color: #0e1d33;
 }
 .auth-card {
-  width: 100%; max-width: 30rem;
+  /* margin:auto centres the card when it fits and falls back to top-aligned
+     (both edges reachable) if it ever overflows a very short viewport. */
+  margin: auto;
+  width: 100%; max-width: 26rem;
   background: var(--surface);
   border-radius: var(--radius);
   box-shadow: 0 20px 56px rgba(6, 16, 32, 0.4);
-  padding: var(--sp-5);
+  padding: var(--sp-4);
 }
-.auth-card h1 { font-size: var(--fs-h2); }
+.auth-card h1 { font-size: var(--fs-h4); margin-bottom: var(--sp-1); }
 .auth-card .sub {
-  color: var(--ink-soft); font-size: var(--fs-body);
-  margin-bottom: var(--sp-5);
+  color: var(--ink-soft); font-size: var(--fs-caption);
+  margin-bottom: var(--sp-3);
 }
-.auth-card button[type='submit'] { width: 100%; }
+.auth-card .alert {
+  padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3);
+  font-size: var(--fs-caption); line-height: 1.4;
+}
+.auth-card button[type='submit'] { width: 100%; min-height: 2.5rem; padding: 0.45rem var(--sp-4); }
 
 .captcha-row { display: flex; gap: var(--sp-2); align-items: stretch; }
 .captcha-row input { flex: 1; }
 .captcha-refresh {
-  flex: none; width: var(--tap); padding: 0;
-  font-size: 1.2rem; line-height: 1;
+  flex: none; width: 2.5rem; min-height: 2.5rem; padding: 0;
+  font-size: 1.1rem; line-height: 1;
   background: var(--surface); border: 1.5px solid var(--line); color: var(--ink-soft);
 }
 .captcha-refresh:hover { color: var(--brand); border-color: var(--ink-faint); }
 .pw-toggle {
-  flex: none; padding: 0 var(--sp-3); font-size: var(--fs-caption);
+  flex: none; min-height: 2.5rem; padding: 0 var(--sp-3); font-size: var(--fs-caption);
   background: var(--surface); border: 1.5px solid var(--line); color: var(--ink-soft);
 }
 .pw-toggle:hover { color: var(--brand); border-color: var(--ink-faint); }
 
 .auth-foot {
-  margin-top: var(--sp-3); font-size: var(--fs-body); text-align: center;
+  margin-top: var(--sp-2); font-size: var(--fs-caption); text-align: center;
 }
 /* A standalone link needs a full-size target, unlike a link inside a sentence. */
 .auth-foot a {
   display: inline-flex; align-items: center; justify-content: center;
-  min-height: var(--tap); padding: 0 var(--sp-3);
+  min-height: 2.25rem; padding: 0 var(--sp-3);
   font-weight: 600; border-radius: var(--radius-sm);
   text-decoration: none;
 }
 .auth-foot a:hover { background: var(--surface-alt); }
 
 .demo-accounts {
-  margin-top: var(--sp-5); border-top: 1px solid var(--line);
-  padding-top: var(--sp-4);
+  margin-top: var(--sp-3); border-top: 1px solid var(--line);
+  padding-top: var(--sp-2);
   font-size: var(--fs-caption); color: var(--ink-soft);
 }
-.demo-accounts p { margin: 0 0 0.5rem; }
-.demo-accounts p:last-child { margin: 0; }
+.demo-accounts p { margin: 0; }
 
 @media (max-width: 30rem) {
-  .auth-card { padding: var(--sp-4); }
+  .auth-card { padding: var(--sp-3); }
 }
 
 /* ============================================================ app shell */

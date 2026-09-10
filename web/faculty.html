@@ -53,9 +53,17 @@
         document.getElementById('page-sub').textContent =
           `${faculty.length} faculty member${faculty.length === 1 ? '' : 's'} · HOD: ${dept.hodName} (${dept.code}). Select one to see their project theme.`;
 
-        document.getElementById('grid').innerHTML = faculty.map((f) => cardLink(
-          `theme.html?fid=${f.fid}`, f.name, `${themesOf(f.fid).length} theme${themesOf(f.fid).length === 1 ? '' : 's'}`,
-        )).join('') || '<p class="empty">No faculty recorded yet for this department.</p>';
+        // Each card leads with the project theme; the faculty member's name
+        // sits below it as the sub-line.
+        document.getElementById('grid').innerHTML = faculty.map((f) => {
+          const themes = themesOf(f.fid);
+          const themeTitle = themes.length === 0
+            ? 'No theme yet'
+            : themes.length === 1
+              ? themes[0].name
+              : `${themes.length} themes`;
+          return cardLink(`theme.html?fid=${f.fid}`, themeTitle, f.name);
+        }).join('') || '<p class="empty">No faculty recorded yet for this department.</p>';
       }
     }
   </script>
